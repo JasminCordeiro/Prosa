@@ -1,0 +1,19 @@
+{
+  "name": "proza",
+  "version": "1.0.0",
+  "description": "Chat App TCP cliente-servidor",
+  "homepage": "https://github.com/JasminCordeiro/Proza#readme",
+  "bugs": {
+    "url": "https://github.com/JasminCordeiro/Proza/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JasminCordeiro/Proza.git"
+  },
+  "license": "ISC",
+  "author": "JasminCordeiro, glermFF, vitwra",  
+  "scripts": {
+    "server": "node Backend/server/server.js",
+    "client": "node Frontend/main/main.js"
+  }
+}
