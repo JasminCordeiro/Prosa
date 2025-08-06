@@ -10,32 +10,28 @@ const rl = readline.createInterface({
 })
 
 const client = net.createConnection({port: Port}, () =>{
-    console.log('Juntou-se ao server')
-
     rl.prompt()
 })
 
 client.setEncoding('utf-8')
 
-
 function closeApp(){
     client.end()
     rl.close()
-    console.log("Conexão encerrada.")
 }
 
 // Retorna dados passados pelo servidor
 client.on('data', (data) => {
-    console.log(`[${data.trim()}]: `)
+    console.log(`${data.trim()} `)
 
     //* Move cursor to beginning of line and clear it
     process.stdout.write('\r\x1b[K');
     rl.prompt()
 })
 
-//* Gerencia o fechamento da conexão com o servidor | TESTAR sem encerrar a concexão
+//* Gerencia o fechamento da conexão com o servidor quando ele cai
 client.on('end', () => {
-  console.log('Closing conection...');
+  console.log('Saindo do chat...');
   rl.close();
   process.exit(0);
 });
@@ -44,7 +40,7 @@ client.on('end', () => {
 rl.on('line', (input) => {
     client.write(input)
 
-    if (input == 'quit'){ //!
+    if (input == 'quit'){
         closeApp()
     }
 
@@ -53,6 +49,5 @@ rl.on('line', (input) => {
 
 //* Saída do servidor, encerra conexão
 rl.on('close', () => {
-  console.log('Saindo do chat...');
   client.end();
 });

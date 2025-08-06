@@ -5,43 +5,77 @@ const port = 2004
 
 const server = net.createServer((Socket) => {
 
-    const clientId = `${Socket.remoteAddress}:${Socket.remotePort}`;
-    console.log(`Client connected: ${clientId}`);
-
-    Socket.setEncoding('utf-8')
-
-    clients.push(Socket)
-
-    Socket.write(`Usuários ativos: ${clients.length}\n`)
-
-    function broadcast(message, sender) {
-        clients.forEach(client => {
-        if (client !== sender) {
-            client.write(message);
-        }
-        });
+    const clientId = {
+        id: `${Socket.remoteAddress}:${Socket.remotePort}`,
+        name: "",
+        socket: Socket
     }
 
-    broadcast(`${clientId} entrou no chat\n`, Socket)
+    function broadcast(message, senderSocket) {
+        clients.forEach(client => {
+            if (client.socket !== senderSocket) {
+                client.socket.write(message);
+            }
+        })
+    }
 
-    Socket.on('data', (data) => {
-        console.log(`${clientId}: ${data.trim()}`)
+    function removeClient(client){
+        return client.socket === Socket
+    }
+    
 
-        broadcast(`${clientId}: ${data}\n`, Socket);
+    function loginRequisition() {
+        Socket.write("Nome de usuário: ")
+        
+        Socket.once('data', (data) => {
+            const username = String(data).trim()
 
-    })
+            function checkName(clientName){
+               return clientName.name.trim() === username
+            }
 
-    Socket.on('end', () => { 
-        console.log(`${clientId} disconectou`)
+            const nameExists = clients.find(checkName)
 
-        const index = clients.indexOf(Socket);
-        if (index !== -1) {
-            clients.splice(index, 1);
-        }
+            if (nameExists) {
 
-        broadcast(`Usuário ${clientId} deixou o chat.\r\n`, null);
-    })
-    Socket.write(`Bem-vindo ${clientId}`)
+                Socket.write("Este nome já está em uso\n")
+                loginRequisition();
+
+            } else {
+
+                clientId.name = username;
+                clients.push({ ...clientId, socket: Socket })
+                Socket.write(`Bem-vindo ${clientId.name}\n`)
+
+                console.log(`Client connected: ${clientId.name} | ${clientId.id}`)
+    
+                Socket.setEncoding('utf-8')
+
+                Socket.write(`Usuários ativos: ${clients.length}\n`)
+
+                broadcast(`${clientId.name} entrou no chat\n`, Socket)
+
+                Socket.on('data', (data) => {
+                    console.log(`${clientId.name}: ${data}`)
+
+                    broadcast(`${clientId.name}: ${data}\n`, Socket)
+                })
+
+                Socket.on('end', () => { 
+                    console.log(`${clientId.name} | ${clientId.id} desconectou`)
+
+                    const index = clients.findIndex(removeClient)
+                    if (index !== -1) {
+                        clients.splice(index, 1);
+                    }
+
+                    broadcast(`${clientId.name} deixou o chat.\r\n`, null);
+                })
+            }
+        })
+    }
+
+    loginRequisition()
 })
 
 server.listen(port, () => {
