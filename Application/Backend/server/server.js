@@ -1,14 +1,24 @@
 const net = require('net')
+const crypto = require('crypto')
+
+const config = require('./config.js')
+const logger = require('../logs/loggers.js')
 
 const clients = []
-const port = 2004
 
-const server = net.createServer((Socket) => {
+function generateClientId() {
+    return crypto.randomBytes(16).toString('hex')
+}
 
-    const clientId = {
-        id: `${Socket.remoteAddress}:${Socket.remotePort}`,
+const server = net.createServer((socket) => {
+
+    socket.setEncoding('utf-8')
+
+    const client = {
+        id: "",
         name: "",
-        socket: Socket
+        address: `${socket.remoteFamily}:${socket.localAddress}:${socket.remotePort}`,
+        socket: socket
     }
 
     function broadcast(message, senderSocket) {
@@ -19,57 +29,92 @@ const server = net.createServer((Socket) => {
         })
     }
 
-    function removeClient(client){
-        return client.socket === Socket
+    //! Suporte a mensagens privadas !!! IMPLEMENTADO COM IA !!!
+    function findClientByName(name) {
+        return clients.find(c => c.name.trim() === name)
     }
-    
+
+    function safeWrite(sock, msg) {
+        if (sock && sock.writable && !sock.destroyed) {
+            try { sock.write(msg) } catch (_) {}
+        }
+    }
+
+    function sendPrivate(fromClient, toName, message) {
+        const target = findClientByName(toName)
+        if (!target) {
+            safeWrite(fromClient.socket, `Usuário '${toName}' não encontrado.\n`)
+            return
+        }
+        safeWrite(target.socket, `[PRIVADO] ${fromClient.name}: ${message}\n`)
+        if (target.socket !== fromClient.socket) {
+            safeWrite(fromClient.socket, `[PRIVADO -> ${target.name}] ${message}\n`)
+        }
+    }
 
     function loginRequisition() {
-        Socket.write("Nome de usuário: ")
+        socket.write("Nome de usuário: ")
         
-        Socket.once('data', (data) => {
+        socket.once('data', (data) => {
             const username = String(data).trim()
 
-            function checkName(clientName){
-               return clientName.name.trim() === username
-            }
-
-            const nameExists = clients.find(checkName)
+            const nameExists = clients.find(clientEntry => clientEntry.name.trim() === username)
 
             if (nameExists) {
 
-                Socket.write("Este nome já está em uso\n")
+                socket.write("Este nome já está em uso\n")
                 loginRequisition();
 
             } else {
 
-                clientId.name = username;
-                clients.push({ ...clientId, socket: Socket })
-                Socket.write(`Bem-vindo ${clientId.name}\n`)
+                client.name = username
+                client.id = generateClientId()
+                clients.push(client)
 
-                console.log(`Client connected: ${clientId.name} | ${clientId.id}`)
-    
-                Socket.setEncoding('utf-8')
+                logger.serverLogger.connection(`Nova conexão: ${client.name} | ${client.id} | ${client.address}`)
+                
+                socket.write(`Bem-vindo ${client.name}\n`)
+                socket.write(`Usuários ativos: ${clients.length}\n`)
 
-                Socket.write(`Usuários ativos: ${clients.length}\n`)
-
-                broadcast(`${clientId.name} entrou no chat\n`, Socket)
-
-                Socket.on('data', (data) => {
-                    console.log(`${clientId.name}: ${data}`)
-
-                    broadcast(`${clientId.name}: ${data}\n`, Socket)
+                broadcast(`${client.name} entrou no chat\n`, socket)
+                
+                //!
+                socket.on('data', (data) => {
+                    const raw = String(data)
+                    const lines = raw.split(/\r?\n/).filter(l => l.length > 0)
+                    for (const line of lines) {
+                        if (line.startsWith('@')) {
+                            const space = line.indexOf(' ')
+                            if (space === -1) {
+                                safeWrite(socket, "Uso: @nome mensagem\n")
+                                continue
+                            }
+                            const toName = line.slice(1, space).trim()
+                            const msg = line.slice(space + 1).trim()
+                            if (!toName || !msg) {
+                                safeWrite(socket, "Uso: @nome mensagem\n")
+                                continue
+                            }
+                            sendPrivate(client, toName, msg)
+                        } else {
+                            broadcast(`${client.name}: ${line}\n`, socket)
+                        }
+                    }
                 })
 
-                Socket.on('end', () => { 
-                    console.log(`${clientId.name} | ${clientId.id} desconectou`)
+                socket.on('error', (err) => {
+                    logger.serverLogger.error(`Ocorreu um erro: ${err.name} --> ${err.message}`)
+                })
 
-                    const index = clients.findIndex(removeClient)
+                socket.on('end', () => { 
+                    logger.serverLogger.desconnection(`${client.name} | ${client.id} desconectou`)
+
+                    const index = clients.findIndex(clientRemove => clientRemove.id === client.id)
                     if (index !== -1) {
                         clients.splice(index, 1);
                     }
 
-                    broadcast(`${clientId.name} deixou o chat.\r\n`, null);
+                    broadcast(`${client.name} deixou o chat.\r\n`, null);
                 })
             }
         })
@@ -78,6 +123,11 @@ const server = net.createServer((Socket) => {
     loginRequisition()
 })
 
-server.listen(port, () => {
-    console.log(`[STATUS] Servidor escutando na porta ${port}`)
+server.on('error', (err) => {
+   logger.serverLogger.error(`Ocorreu um erro: ${err.name} --> ${err.message}`)
+})
+
+server.listen(config.PORT, () => {
+    logger.serverLogger.warning(`Servidor foi ativado`)
+    console.log(`[STATUS] Servidor escutando na porta ${config.PORT}`)
 })

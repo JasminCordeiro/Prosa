@@ -1,7 +1,8 @@
 const net = require('net')
 const readline = require('readline')
 
-const Port = 2004
+const config = require('../server/config.js')
+const logger = require('../logs/loggers.js')
 
 //* Input do teclado
 const rl = readline.createInterface({
@@ -9,7 +10,7 @@ const rl = readline.createInterface({
     output: process.stdout
 })
 
-const client = net.createConnection({port: Port}, () =>{
+const client = net.createConnection({port: config.PORT}, () =>{
     rl.prompt()
 })
 
@@ -31,7 +32,8 @@ client.on('data', (data) => {
 
 //* Gerencia o fechamento da conexão com o servidor quando ele cai
 client.on('end', () => {
-  console.log('Saindo do chat...');
+    
+  logger.clientLogger.desconnection('Desconectou do chat')
   rl.close();
   process.exit(0);
 });
@@ -49,5 +51,6 @@ rl.on('line', (input) => {
 
 //* Saída do servidor, encerra conexão
 rl.on('close', () => {
-  client.end();
+    logger.clientLogger.desconnection('Desconectou do servidor')
+    client.end();
 });

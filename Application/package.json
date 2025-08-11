@@ -11,9 +11,12 @@
     "url": "git+https://github.com/JasminCordeiro/Proza.git"
   },
   "license": "ISC",
-  "author": "JasminCordeiro, glermFF, vitwra",  
+  "author": "JasminCordeiro, glermFF, vitwra",
   "scripts": {
     "server": "node Backend/server/server.js",
-    "client": "node Frontend/main/main.js"
+    "client": "node Backend/client/main.js"
+  },
+  "dependencies": {
+    "winston": "^3.17.0"
   }
 }
