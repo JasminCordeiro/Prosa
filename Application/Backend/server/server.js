@@ -3,6 +3,7 @@ const crypto = require('crypto')
 
 const config = require('./config.js')
 const logger = require('../logs/loggers.js')
+const HttpServerManager = require('./http-server.js')
 
 const clients = []
 
@@ -10,8 +11,13 @@ const clients = []
 let broadcastActive = true
 //*
 
+// Inicializar servidor HTTP/WebSocket
+const httpServer = new HttpServerManager()
+httpServer.start()
+
 function serverShutDown(){
     clients.forEach(client => client.socket.write("Servidor desativado"))
+    httpServer.stop()
 }
 
 const server = net.createServer((socket) => {

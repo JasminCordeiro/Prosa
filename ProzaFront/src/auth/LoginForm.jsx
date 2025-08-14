@@ -1,12 +1,35 @@
-import { Box, Button, TextField, Typography } from "@mui/material";
+import { Box, Button, TextField, Typography, Alert, CircularProgress } from "@mui/material";
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import logo from "../assets/logotipo-proza.svg";
+import { useSocket } from "../context/SocketContext";
 
 const LoginForm = () => {
   const [usuario, setUsuario] = useState("");
-  const [servidor, setServidor] = useState("");
+  const [servidor, setServidor] = useState("localhost:3001");
   const navigate = useNavigate();
+  const { register, loading, error, user, connect } = useSocket();
+
+  // Redirecionar se já estiver logado
+  React.useEffect(() => {
+    if (user) {
+      navigate("/chat");
+    }
+  }, [user, navigate]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!usuario.trim()) {
+      return;
+    }
+
+    try {
+      await register(usuario.trim());
+    } catch (err) {
+      console.error('Erro no login:', err);
+    }
+  };
 
   return (
     <Box
@@ -81,13 +104,10 @@ const LoginForm = () => {
             width: "50%",
           }}
         >
-          <Box
-            component="form"
-            className="FormsLogin"
-            onSubmit={(e) => {
-              e.preventDefault();
-              navigate("/chat");
-            }}
+                      <Box
+              component="form"
+              className="FormsLogin"
+              onSubmit={handleSubmit}
             sx={{
               display: "flex",
               flexDirection: "column",
@@ -123,6 +143,12 @@ const LoginForm = () => {
               Insira seu nome e participe dessa proza!
             </Typography>
 
+            {error && (
+              <Alert severity="error" sx={{ width: "80%", marginBottom: "20px" }}>
+                {error}
+              </Alert>
+            )}
+
             <TextField
               placeholder="Usuário"
               variant="outlined"
@@ -130,6 +156,8 @@ const LoginForm = () => {
               margin="normal"
               value={usuario}
               onChange={(e) => setUsuario(e.target.value)}
+              disabled={loading}
+              required
               sx={{
                 borderRadius: 2,
                 backgroundColor: "#F8E6D2",
@@ -152,6 +180,7 @@ const LoginForm = () => {
               variant="outlined"
               value={servidor}
               onChange={(e) => setServidor(e.target.value)}
+              disabled={loading}
               sx={{
                 fontFamily: "Caladea",
                 borderRadius: 2,
@@ -174,6 +203,7 @@ const LoginForm = () => {
               type="submit"
               variant="contained"
               className="loginBotao"
+              disabled={loading || !usuario.trim()}
               sx={{
                 fontFamily: "Caladea",
                 backgroundColor: "#F8E6D2",
@@ -184,9 +214,17 @@ const LoginForm = () => {
                 "&:hover": {
                   backgroundColor: "#987C5B",
                 },
+                "&:disabled": {
+                  backgroundColor: "#CCCCCC",
+                  color: "#666666",
+                },
               }}
             >
-              Entrar
+              {loading ? (
+                <CircularProgress size={24} color="inherit" />
+              ) : (
+                "Entrar"
+              )}
             </Button>
           </Box>
         </Box>
