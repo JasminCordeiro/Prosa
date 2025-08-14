@@ -1,6 +1,6 @@
-# ☕ Proza — Chat em Rede com Sockets TCP
+# ☕ Prosa — Chat em Rede com Sockets TCP
 
-**Proza** é uma aplicação de chat ponto a ponto desenvolvida como parte do Trabalho Prático da disciplina **Redes de Computadores 1** (UFOP - 2025). A aplicação permite a troca de mensagens entre usuários conectados via **sockets TCP**, com gerenciamento centralizado de conexões.
+**Prosa** é uma aplicação de chat ponto a ponto desenvolvida como parte do Trabalho Prático da disciplina **Redes de Computadores 1** (UFOP - 2025). A aplicação permite a troca de mensagens entre usuários conectados via **sockets TCP**, com gerenciamento centralizado de conexões.
 
 ## 📚 Objetivo
 
