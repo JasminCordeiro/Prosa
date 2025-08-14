@@ -6,8 +6,12 @@ const logger = require('../logs/loggers.js')
 
 const clients = []
 
-function generateClientId() {
-    return crypto.randomBytes(16).toString('hex')
+//*[TESTES] Ativar/Desativar funções
+let broadcastActive = true
+//*
+
+function serverShutDown(){
+    clients.forEach(client => client.socket.write("Servidor desativado"))
 }
 
 const server = net.createServer((socket) => {
@@ -15,52 +19,54 @@ const server = net.createServer((socket) => {
     socket.setEncoding('utf-8')
 
     const client = {
-        id: "",
+        id: crypto.randomBytes(16).toString('hex'),
         name: "",
-        address: `${socket.remoteFamily}:${socket.localAddress}:${socket.remotePort}`,
+        address: `${socket.remoteFamily}:${socket.localAddress}`,
+        port: `${socket.remotePort}`,
         socket: socket
     }
 
-    function broadcast(message, senderSocket) {
+    function broadcast(message, senderSocket, enabled = broadcastActive) {
+        if(!enabled) return
         clients.forEach(client => {
             if (client.socket !== senderSocket) {
                 client.socket.write(message);
             }
         })
     }
+    
 
-    //! Suporte a mensagens privadas !!! IMPLEMENTADO COM IA !!!
-    function findClientByName(name) {
-        return clients.find(c => c.name.trim() === name)
-    }
-
-    function safeWrite(sock, msg) {
+    function safeWrite(sock, msg) { //! IMPLEMENTADO COM IA
         if (sock && sock.writable && !sock.destroyed) {
             try { sock.write(msg) } catch (_) {}
         }
     }
 
     function sendPrivate(fromClient, toName, message) {
-        const target = findClientByName(toName)
+        const target = clients.find(client => client.name === toName)
+
+
+        
         if (!target) {
             safeWrite(fromClient.socket, `Usuário '${toName}' não encontrado.\n`)
             return
         }
+
         safeWrite(target.socket, `[PRIVADO] ${fromClient.name}: ${message}\n`)
         if (target.socket !== fromClient.socket) {
             safeWrite(fromClient.socket, `[PRIVADO -> ${target.name}] ${message}\n`)
         }
     }
-
+    
     function loginRequisition() {
         socket.write("Nome de usuário: ")
         
         socket.once('data', (data) => {
             const username = String(data).trim()
 
-            const nameExists = clients.find(clientEntry => clientEntry.name.trim() === username)
-
-            if (nameExists) {
+            const nameChoosen = clients.find(clientUsernameEntry => clientUsernameEntry.name.trim() === username)
+    
+            if (nameChoosen) {
 
                 socket.write("Este nome já está em uso\n")
                 loginRequisition();
@@ -68,42 +74,33 @@ const server = net.createServer((socket) => {
             } else {
 
                 client.name = username
-                client.id = generateClientId()
                 clients.push(client)
 
                 logger.serverLogger.connection(`Nova conexão: ${client.name} | ${client.id} | ${client.address}`)
                 
                 socket.write(`Bem-vindo ${client.name}\n`)
-                socket.write(`Usuários ativos: ${clients.length}\n`)
+                socket.write(`Usuários ativos: ${clients.length}\n${clients.map(client => client.name)}\n`)
 
                 broadcast(`${client.name} entrou no chat\n`, socket)
                 
-                //!
                 socket.on('data', (data) => {
-                    const raw = String(data)
-                    const lines = raw.split(/\r?\n/).filter(l => l.length > 0)
-                    for (const line of lines) {
-                        if (line.startsWith('@')) {
-                            const space = line.indexOf(' ')
-                            if (space === -1) {
-                                safeWrite(socket, "Uso: @nome mensagem\n")
-                                continue
-                            }
-                            const toName = line.slice(1, space).trim()
-                            const msg = line.slice(space + 1).trim()
-                            if (!toName || !msg) {
-                                safeWrite(socket, "Uso: @nome mensagem\n")
-                                continue
-                            }
-                            sendPrivate(client, toName, msg)
-                        } else {
-                            broadcast(`${client.name}: ${line}\n`, socket)
-                        }
+                    const raw = String(data).trim()
+                    
+                    if (raw.startsWith('@')) {
+                        const space = raw.indexOf(' ')
+                        const toName = raw.slice(1, space).trim()
+                        const msg = raw.slice(space).trim()
+
+                        sendPrivate(client, toName, msg)
+
+                    } else {
+                        broadcast(`${client.name}: ${data}\n`, socket)
                     }
                 })
-
+                
                 socket.on('error', (err) => {
                     logger.serverLogger.error(`Ocorreu um erro: ${err.name} --> ${err.message}`)
+                    socket.on("Error " + err)
                 })
 
                 socket.on('end', () => { 
@@ -121,6 +118,12 @@ const server = net.createServer((socket) => {
     }
 
     loginRequisition()
+})
+
+process.on('SIGINT', () => {
+    logger.serverLogger.warning("Servidor desativado manualmente (SIGINT)")
+    serverShutDown()
+    setTimeout(() => process.exit(0), 500)
 })
 
 server.on('error', (err) => {
