@@ -46,8 +46,12 @@ class SocketService {
     });
 
     this.socket.on('register-success', (data) => {
-      this.user = { id: data.clientId, name: data.message.split(' ')[1] };
-      console.log('Registro bem-sucedido:', data);
+      console.log('Evento register-success recebido:', data);
+      this.user = { 
+        id: data.clientId, 
+        name: data.message ? data.message.replace('Bem-vindo ', '') : 'unknown'
+      };
+      console.log('Usuário definido no socketService:', this.user);
       this.emitToCallbacks('register-success', data);
     });
 
@@ -95,18 +99,26 @@ class SocketService {
   // Registrar usuário
   register(username) {
     if (!this.socket || !this.connected) {
+      console.error('Socket não está conectado. Connected:', this.connected, 'Socket:', !!this.socket);
       throw new Error('Socket não está conectado');
     }
 
+    console.log('Tentando registrar usuário:', username);
     this.socket.emit('register', { username });
   }
 
   // Enviar mensagem
   sendMessage(message, type = 'text') {
     if (!this.socket || !this.connected || !this.user) {
+      console.error('Erro ao enviar mensagem - estado:', {
+        socketExists: !!this.socket,
+        connected: this.connected,
+        userExists: !!this.user
+      });
       throw new Error('Usuário não está conectado ou registrado');
     }
 
+    console.log('Enviando mensagem:', { message, type, user: this.user });
     this.socket.emit('send-message', { message, type });
   }
 

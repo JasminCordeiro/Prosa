@@ -157,7 +157,8 @@ class HttpServerManager {
                     // Confirmar para o remetente
                     socket.emit('private-message-sent', {
                         ...privateMsg,
-                        message: `[PRIVADO -> ${targetUsername}] ${privateMessage}`
+                        message: privateMessage,
+                        target: targetUsername
                     })
 
                 } else {

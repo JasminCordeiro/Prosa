@@ -41,10 +41,12 @@ O frontend irá iniciar na porta **5173** por padrão.
 1. **Acesse o frontend**: http://localhost:5173
 2. **Faça login**: Digite seu nome de usuário
 3. **Teste as funcionalidades**:
-   - Envio de mensagens públicas
-   - Mensagens privadas (use `@nomedousuario sua mensagem`)
-   - Envio de arquivos
-   - Visualização de usuários online
+   - **Grupo Geral**: Todos entram automaticamente neste grupo
+   - **Mensagens públicas**: Enviadas no grupo geral, todos veem
+   - **Conversas privadas**: Clique em um usuário na sidebar para iniciar
+   - **Navegação**: Use a sidebar direita para alternar entre grupo e conversas
+   - **Envio de arquivos**: Funciona tanto no grupo quanto em conversas privadas
+   - **Lista de usuários**: Visualize todos os usuários online na sidebar
 
 ## 🔧 Funcionalidades Implementadas
 
@@ -62,8 +64,11 @@ O frontend irá iniciar na porta **5173** por padrão.
 - ✅ Serviço WebSocket encapsulado
 - ✅ Interface de login integrada
 - ✅ Chat em tempo real
+- ✅ **Grupo Geral**: Todos os usuários entram automaticamente
+- ✅ **Conversas Privadas**: Separadas do grupo geral
+- ✅ **Sidebar com usuários**: Lista de usuários online no lado direito
+- ✅ **Navegação**: Alternância entre grupo geral e conversas privadas
 - ✅ Indicadores visuais de conexão
-- ✅ Suporte a mensagens privadas
 - ✅ Upload de arquivos
 - ✅ Scroll automático para novas mensagens
 
@@ -76,15 +81,24 @@ O frontend irá iniciar na porta **5173** por padrão.
 
 ### Teste 2: Mensagens Privadas
 1. Com 2+ usuários conectados
-2. Digite: `@nomedousuario sua mensagem privada`
-3. Verifique se aparece apenas para o destinatário
+2. **Método 1**: Clique no nome de um usuário na sidebar direita
+3. **Método 2**: No grupo geral, digite: `@nomedousuario sua mensagem privada`
+4. Verifique se a conversa aparece em uma aba separada
+5. Teste alternando entre grupo geral e conversa privada
 
-### Teste 3: Envio de Arquivos
+### Teste 3: Navegação e Interface
+1. **Sidebar Direita**: Verifique se todos os usuários aparecem na lista
+2. **Drawer Esquerdo**: Navegue entre "Grupo Geral" e conversas privadas
+3. **Conversas Privadas**: Clique em usuários na sidebar direita para iniciar
+4. **Visual**: Observe que a conversa atual fica destacada no drawer
+5. **Indicadores**: Verifique contadores de mensagens não lidas
+
+### Teste 4: Envio de Arquivos
 1. Clique no ícone 📎
 2. Selecione um arquivo
-3. Verifique se aparece para todos os usuários
+3. Teste tanto no grupo geral quanto em conversas privadas
 
-### Teste 4: Reconexão
+### Teste 5: Reconexão
 1. Pare o backend
 2. Verifique se o frontend mostra erro
 3. Reinicie o backend
@@ -118,11 +132,27 @@ Backend TCP Server (Net)
 
 ## 🎨 Detalhes da Interface
 
+### Layout Principal
+- **Sidebar Esquerda**: Menu de navegação com grupo geral e conversas privadas
+- **Área Central**: Chat ativo (grupo geral ou conversa privada)
+- **Sidebar Direita**: Lista de usuários online
+
+### Mensagens
 - **Mensagens do usuário atual**: Alinhadas à direita, fundo bege
 - **Mensagens de outros**: Alinhadas à esquerda, fundo branco
 - **Mensagens do sistema**: Centralizadas, fundo escuro
-- **Mensagens privadas**: Borda laranja, indicador especial
-- **Status de conexão**: Mostrado no cabeçalho
+- **Mensagens privadas**: Separadas em abas próprias
+
+### Sidebar Esquerda (Drawer)
+- **Grupo Geral**: Acesso ao chat público principal
+- **Conversas Privadas**: Lista dinâmica de conversas ativas
+- **Navegação**: Visual destacado da conversa atual
+- **Indicadores**: Contador de mensagens não lidas
+
+### Sidebar Direita
+- **Usuários Online**: Lista de todos os usuários conectados
+- **Interação**: Clique em qualquer usuário para iniciar conversa privada
+- **Status**: Seu próprio nome aparece destacado
 
 ## 🔄 Próximos Passos Sugeridos
 

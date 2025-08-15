@@ -13,7 +13,8 @@ const LoginForm = () => {
   // Redirecionar se já estiver logado
   React.useEffect(() => {
     if (user) {
-      navigate("/chat");
+      console.log('Usuario logado, redirecionando para /Chat:', user);
+      navigate("/Chat");
     }
   }, [user, navigate]);
 

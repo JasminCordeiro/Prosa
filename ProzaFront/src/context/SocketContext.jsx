@@ -14,8 +14,10 @@ export const useSocket = () => {
 export const SocketProvider = ({ children }) => {
   const [connected, setConnected] = useState(false);
   const [user, setUser] = useState(null);
-  const [messages, setMessages] = useState([]);
+  const [groupMessages, setGroupMessages] = useState([]); // Mensagens do grupo geral
+  const [privateConversations, setPrivateConversations] = useState({}); // Conversas privadas {username: [messages]}
   const [users, setUsers] = useState([]);
+  const [currentView, setCurrentView] = useState('general'); // 'general' ou username para conversa privada
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -40,17 +42,21 @@ export const SocketProvider = ({ children }) => {
       setLoading(true);
       setError(null);
       
+      console.log('Iniciando registro de usuário:', username);
+      
       if (!connected) {
+        console.log('Socket não conectado, conectando primeiro...');
         await connect();
       }
       
+      console.log('Registrando usuário no servidor...');
       socketService.register(username);
     } catch (err) {
       setError('Erro ao registrar usuário');
       console.error('Erro no registro:', err);
-    } finally {
       setLoading(false);
     }
+    // Não definir loading como false aqui, pois o callback onRegisterSuccess fará isso
   }, [connected, connect]);
 
   // Enviar mensagem
@@ -78,21 +84,65 @@ export const SocketProvider = ({ children }) => {
     socketService.disconnect();
     setConnected(false);
     setUser(null);
-    setMessages([]);
+    setGroupMessages([]);
+    setPrivateConversations({});
     setUsers([]);
+    setCurrentView('general');
   }, []);
+
+  // Alternar entre grupo geral e conversa privada
+  const switchToGeneral = useCallback(() => {
+    setCurrentView('general');
+  }, []);
+
+  const switchToPrivateChat = useCallback((username) => {
+    setCurrentView(username);
+    // Se não existe conversa com esse usuário, criar uma vazia
+    if (!privateConversations[username]) {
+      setPrivateConversations(prev => ({
+        ...prev,
+        [username]: []
+      }));
+    }
+  }, [privateConversations]);
+
+  // Obter mensagens da visualização atual
+  const getCurrentMessages = useCallback(() => {
+    if (currentView === 'general') {
+      console.log('Retornando mensagens do grupo geral:', groupMessages.length, 'mensagens');
+      return groupMessages;
+    }
+    const privateMessages = privateConversations[currentView] || [];
+    console.log(`Retornando mensagens privadas de ${currentView}:`, privateMessages.length, 'mensagens');
+    return privateMessages;
+  }, [currentView, groupMessages, privateConversations]);
+
+  // Obter conversas privadas com contadores de mensagens não lidas
+  const getPrivateChats = useCallback(() => {
+    return Object.keys(privateConversations).map(username => ({
+      username,
+      messageCount: privateConversations[username].length,
+      lastMessage: privateConversations[username][privateConversations[username].length - 1]
+    }));
+  }, [privateConversations]);
 
   // Configurar listeners quando o componente monta
   useEffect(() => {
     // Callback para sucesso no registro
     const onRegisterSuccess = (data) => {
-      setUser({
+      console.log('onRegisterSuccess - dados recebidos:', data);
+      // Extrair nome do usuário da mensagem ou dos dados
+      const userName = data.message ? data.message.replace('Bem-vindo ', '') : 'unknown';
+      const newUser = {
         id: data.clientId,
-        name: data.message.split(' ')[1]
-      });
+        name: userName
+      };
+      console.log('Definindo usuário:', newUser);
+      setUser(newUser);
       setUsers(data.users || []);
       setError(null);
       setLoading(false);
+      console.log('Estado atualizado - usuário:', userName, 'ID:', data.clientId);
     };
 
     // Callback para erro no registro
@@ -101,37 +151,57 @@ export const SocketProvider = ({ children }) => {
       setLoading(false);
     };
 
-    // Callback para nova mensagem
+    // Callback para nova mensagem (grupo geral)
     const onNewMessage = (message) => {
-      setMessages(prev => [...prev, {
-        ...message,
-        id: message.id || Date.now()
-      }]);
+      console.log('Nova mensagem recebida para grupo geral:', message);
+      setGroupMessages(prev => {
+        const newMessages = [...prev, {
+          ...message,
+          id: message.id || Date.now()
+        }];
+        console.log('Total de mensagens no grupo após adicionar:', newMessages.length);
+        return newMessages;
+      });
     };
 
-    // Callback para mensagem privada
+    // Callback para mensagem privada recebida
     const onPrivateMessage = (message) => {
-      setMessages(prev => [...prev, {
-        ...message,
-        id: message.id || Date.now(),
-        isPrivate: true
-      }]);
+      const senderName = message.sender;
+      setPrivateConversations(prev => ({
+        ...prev,
+        [senderName]: [
+          ...(prev[senderName] || []),
+          {
+            ...message,
+            id: message.id || Date.now(),
+            isPrivate: true,
+            isReceived: true
+          }
+        ]
+      }));
     };
 
     // Callback para confirmação de mensagem privada enviada
     const onPrivateMessageSent = (message) => {
-      setMessages(prev => [...prev, {
-        ...message,
-        id: message.id || Date.now(),
-        isPrivate: true,
-        isSent: true
-      }]);
+      const targetName = message.target;
+      setPrivateConversations(prev => ({
+        ...prev,
+        [targetName]: [
+          ...(prev[targetName] || []),
+          {
+            ...message,
+            id: message.id || Date.now(),
+            isPrivate: true,
+            isSent: true
+          }
+        ]
+      }));
     };
 
     // Callback para usuário que entrou
     const onUserJoined = (data) => {
       setUsers(prev => [...prev, data.user]);
-      setMessages(prev => [...prev, {
+      setGroupMessages(prev => [...prev, {
         id: Date.now(),
         message: data.message,
         type: 'system',
@@ -142,7 +212,7 @@ export const SocketProvider = ({ children }) => {
     // Callback para usuário que saiu
     const onUserLeft = (data) => {
       setUsers(prev => prev.filter(u => u.id !== data.userId));
-      setMessages(prev => [...prev, {
+      setGroupMessages(prev => [...prev, {
         id: Date.now(),
         message: data.message,
         type: 'system',
@@ -210,8 +280,10 @@ export const SocketProvider = ({ children }) => {
     // Estado
     connected,
     user,
-    messages,
+    groupMessages,
+    privateConversations,
     users,
+    currentView,
     loading,
     error,
     
@@ -222,9 +294,18 @@ export const SocketProvider = ({ children }) => {
     sendFile,
     disconnect,
     
+    // Navegação
+    switchToGeneral,
+    switchToPrivateChat,
+    
     // Funções utilitárias
+    getCurrentMessages,
+    getPrivateChats,
     clearError: () => setError(null),
-    clearMessages: () => setMessages([])
+    clearMessages: () => {
+      setGroupMessages([]);
+      setPrivateConversations({});
+    }
   };
 
   return (

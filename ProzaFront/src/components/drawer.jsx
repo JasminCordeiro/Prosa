@@ -1,6 +1,6 @@
 import React from "react";
 import { useState } from "react";
-import { Box, Button, Typography } from "@mui/material";
+import { Box, Button, Typography, Badge } from "@mui/material";
 import MuiDrawer from "@mui/material/Drawer";
 import LogoutIcon from "@mui/icons-material/Logout";
 import MarkUnreadChatAltOutlinedIcon from "@mui/icons-material/MarkUnreadChatAltOutlined";
@@ -9,12 +9,34 @@ import WifiOutlinedIcon from "@mui/icons-material/WifiOutlined";
 import PersonOutlinedIcon from "@mui/icons-material/PersonOutlined";
 import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
 import DesktopWindowsOutlinedIcon from "@mui/icons-material/DesktopWindowsOutlined";
+import GroupIcon from "@mui/icons-material/Group";
+import ChatIcon from "@mui/icons-material/Chat";
 import AddCircleOutlineOutlinedIcon from "@mui/icons-material/AddCircleOutlineOutlined";
+import { useSocket } from "../context/SocketContext";
+import { useNavigate } from "react-router-dom";
 
 export const drawerWidth = 500;
 
 const DrawerComponent = () => {
   const [isClicked, setIsClicked] = useState(null);
+  const navigate = useNavigate();
+  
+  const { 
+    user, 
+    currentView, 
+    connected,
+    switchToGeneral, 
+    switchToPrivateChat,
+    getPrivateChats,
+    disconnect 
+  } = useSocket();
+
+  const privateChats = getPrivateChats();
+
+  const handleLogout = () => {
+    disconnect();
+    navigate("/");
+  };
 
   return (
     <Box sx={{ display: "flex" }}>
@@ -139,7 +161,7 @@ const DrawerComponent = () => {
           {/* Botão de logout fixado no rodapé */}
           <Button
               className="exit"
-              onClick={() => console.log("Logout clicado")}
+              onClick={handleLogout}
               sx={{
                 width: "100%",
                 height: "8%",
@@ -242,11 +264,14 @@ const DrawerComponent = () => {
               alignItems: "center",
               width: "100%",
               height: "84%",
+              overflowY: "auto",
+              paddingTop: 1,
             }}
           >
+            {/* Grupo Geral */}
             <Button
-              className="Chat"
-              onClick={() => setIsClicked(isClicked == 1 ? null : 1)}
+              className="Chat General"
+              onClick={switchToGeneral}
               sx={{
                 display: "flex",
                 justifyContent: "flex-start",
@@ -254,7 +279,8 @@ const DrawerComponent = () => {
                 width: "98%",
                 height: "12%",
                 borderRadius: 3,
-                ...(isClicked == 1 && {
+                marginBottom: 1,
+                ...(currentView === 'general' && {
                   border: "3px solid #3E1D01",
                   bgcolor: "#987C5B",
                 }),
@@ -265,7 +291,7 @@ const DrawerComponent = () => {
               }}
             >
               <Box
-                className="Image Person"
+                className="Image Group"
                 sx={{
                   width: "13%",
                   display: "flex",
@@ -274,7 +300,7 @@ const DrawerComponent = () => {
                   height: "100%",
                 }}
               >
-                <AccountCircleOutlinedIcon
+                <GroupIcon
                   sx={{ color: "#3E1D01", fontSize: 45 }}
                 />
               </Box>
@@ -286,118 +312,141 @@ const DrawerComponent = () => {
                   display: "flex",
                   flexDirection: "column",
                   justifyContent: "center",
-                  alignItems: "center",
+                  alignItems: "flex-start",
                   height: "100%",
+                  paddingLeft: 1,
+                }}
+              >
+                <Typography
+                  sx={{
+                    color: "#532C09",
+                    fontWeight: "bold",
+                    fontSize: "16px",
+                  }}
+                >
+                  Grupo Geral
+                </Typography>
+                <Typography
+                  sx={{
+                    color: "#532C09",
+                    fontSize: "12px",
+                    opacity: 0.8,
+                  }}
+                >
+                  Chat público
+                </Typography>
+              </Box>
+            </Button>
+
+            {/* Título das Conversas Privadas */}
+            {privateChats.length > 0 && (
+              <Box
+                sx={{
+                  width: "98%",
+                  marginTop: 2,
+                  marginBottom: 1,
+                  paddingLeft: 1,
+                }}
+              >
+                <Typography
+                  sx={{
+                    color: "#532C09",
+                    fontSize: "14px",
+                    fontWeight: "bold",
+                    opacity: 0.8,
+                  }}
+                >
+                  CONVERSAS PRIVADAS
+                </Typography>
+              </Box>
+            )}
+
+            {/* Lista de Conversas Privadas */}
+            {privateChats.map((chat) => (
+              <Button
+                key={chat.username}
+                className="Chat Private"
+                onClick={() => switchToPrivateChat(chat.username)}
+                sx={{
+                  display: "flex",
+                  justifyContent: "flex-start",
+                  alignItems: "center",
+                  width: "98%",
+                  height: "12%",
                   borderRadius: 3,
+                  marginBottom: 1,
+                  ...(currentView === chat.username && {
+                    border: "3px solid #3E1D01",
+                    bgcolor: "#987C5B",
+                  }),
+                  "&:hover": {
+                    border: "3px solid #3E1D01",
+                    bgcolor: "#987C5B",
+                  },
                 }}
               >
                 <Box
-                  className="Chat name"
+                  className="Image Person"
                   sx={{
-                    width: "100%",
-                    height: "60%",
+                    width: "13%",
                     display: "flex",
-                    justifyContent: "flex-start",
+                    justifyContent: "center",
                     alignItems: "center",
-                    borderRadius: 3,
-                    color: "#532C09",
+                    height: "100%",
                   }}
                 >
-                  Grupo
+                  <Badge
+                    badgeContent={chat.messageCount}
+                    color="primary"
+                    sx={{
+                      '& .MuiBadge-badge': {
+                        backgroundColor: '#ff9800',
+                        color: 'white',
+                        fontSize: '10px',
+                      },
+                    }}
+                  >
+                    <ChatIcon
+                      sx={{ color: "#3E1D01", fontSize: 40 }}
+                    />
+                  </Badge>
                 </Box>
 
                 <Box
-                  className="Chat name"
+                  className="Info"
                   sx={{
-                    width: "100%",
-                    height: "40%",
+                    width: "87%",
                     display: "flex",
-                    justifyContent: "flex-start",
-                    alignItems: "center",
-                    borderRadius: 3,
-                    color: "#532C09",
+                    flexDirection: "column",
+                    justifyContent: "center",
+                    alignItems: "flex-start",
+                    height: "100%",
+                    paddingLeft: 1,
                   }}
                 >
-                  Mensagem
+                  <Typography
+                    sx={{
+                      color: "#532C09",
+                      fontWeight: "bold",
+                      fontSize: "14px",
+                    }}
+                  >
+                    {chat.username}
+                  </Typography>
+                  <Typography
+                    sx={{
+                      color: "#532C09",
+                      fontSize: "11px",
+                      opacity: 0.7,
+                    }}
+                  >
+                    {chat.lastMessage ? 
+                      (chat.lastMessage.message || chat.lastMessage.fileName || 'Arquivo').substring(0, 25) + '...' 
+                      : 'Nenhuma mensagem'}
+                  </Typography>
                 </Box>
-              </Box>
-            </Button>
-
-            <Button
-              className="Chat"
-              onClick={() => setIsClicked(isClicked == 2 ? null : 2)}
-              sx={{
-                display: "flex",
-                justifyContent: "flex-start",
-                alignItems: "center",
-                width: "98%",
-                height: "12%",
-                borderRadius: 3,
-                ...(isClicked == 2 && {
-                  border: "3px solid #3E1D01",
-                  bgcolor: "#987C5B",
-                }),
-                "&:hover": {
-                  border: "3px solid #3E1D01",
-                  bgcolor: "#987C5B",
-                },
-              }}
-            >
-              <Box
-                className="Image Person"
-                sx={{
-                  width: "13%",
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  height: "100%",
-                }}
-              >
-                <AccountCircleOutlinedIcon
-                  sx={{ color: "#3E1D01", fontSize: 45 }}
-                />
-              </Box>
-
-              <Box
-                className="Info"
-                sx={{
-                  width: "87%",
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  height: "100%",
-                }}
-              >
-                <Box
-                  className="Chat name"
-                  sx={{
-                    width: "100%",
-                    height: "60%",
-                    display: "flex",
-                    justifyContent: "flex-start",
-                    alignItems: "center",
-                    color: "#532C09",
-                  }}
-                >
-                  Grupo 02
-                </Box>
-
-                <Box
-                  className="Chat name"
-                  sx={{
-                    width: "100%",
-                    height: "40%",
-                    display: "flex",
-                    justifyContent: "flex-start",
-                    alignItems: "center",
-                    color: "#532C09",
-                  }}
-                >
-                  Mensagem
-                </Box>
-              </Box>
-            </Button>
+              </Button>
+            ))}
           </Box>
 
           {/*Rodapé*/}

@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from "react";
-import { Box, Button, TextField, Typography, Alert } from "@mui/material";
+import { Box, Button, TextField, Typography, Alert, IconButton } from "@mui/material";
 import bg from "../assets/background02.png";
 import DrawerL from "../components/drawer";
+import UserList from "../components/UserList";
 import GroupsOutlinedIcon from "@mui/icons-material/GroupsOutlined";
 import SendOutlinedIcon from "@mui/icons-material/SendOutlined";
 import AttachFileOutlinedIcon from "@mui/icons-material/AttachFileOutlined";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useSocket } from "../context/SocketContext";
 import { useNavigate } from "react-router-dom";
 
@@ -15,22 +17,35 @@ const Chat = () => {
   
   const { 
     user, 
-    messages, 
     users, 
     connected, 
+    loading,
     sendMessage, 
     sendFile, 
     error, 
     clearError,
-    disconnect 
+    disconnect,
+    currentView,
+    switchToGeneral,
+    getCurrentMessages
   } = useSocket();
+
+  // Obter mensagens da visualização atual
+  const messages = getCurrentMessages();
+  
+  // Debug: Verificar mensagens
+  useEffect(() => {
+    console.log('Chat - mensagens atuais:', messages.length, 'view:', currentView);
+  }, [messages, currentView]);
 
   // Redirecionar se não estiver logado
   useEffect(() => {
-    if (!user && !connected) {
+    console.log('Chat - verificando estado:', { user: !!user, connected, loading, userName: user?.name });
+    if (!user && !connected && !loading) {
+      console.log('Chat - redirecionando para login (sem usuário, desconectado e não carregando)');
       navigate("/");
     }
-  }, [user, connected, navigate]);
+  }, [user, connected, loading, navigate]);
 
   // Auto scroll para última mensagem
   useEffect(() => {
@@ -41,7 +56,14 @@ const Chat = () => {
   const handleSendMessage = () => {
     if (message.trim() && connected && user) {
       try {
-        sendMessage(message.trim());
+        let messageToSend = message.trim();
+        
+        // Se estiver em conversa privada e não começar com @, adicionar automaticamente
+        if (currentView !== 'general' && !messageToSend.startsWith('@')) {
+          messageToSend = `@${currentView} ${messageToSend}`;
+        }
+        
+        sendMessage(messageToSend);
         setMessage('');
       } catch (err) {
         console.error("Erro ao enviar mensagem:", err);
@@ -117,7 +139,7 @@ const Chat = () => {
   };
 
   // Se não estiver conectado, mostrar loading
-  if (!user) {
+  if (!user && (loading || connected)) {
     return (
       <Box sx={{ 
         display: 'flex', 
@@ -127,7 +149,7 @@ const Chat = () => {
         backgroundColor: '#745736'
       }}>
         <Typography variant="h6" color="white">
-          Conectando...
+          {loading ? 'Registrando usuário...' : 'Conectando...'}
         </Typography>
       </Box>
     );
@@ -166,7 +188,7 @@ const Chat = () => {
           display: "flex",
           justifyContent: "flex-start",
           flexDirection: "column",
-          width: "69%",
+          width: "calc(100% - 330px)", // Deixar espaço para sidebar
           height: "100%",
         }}
       >
@@ -183,6 +205,19 @@ const Chat = () => {
             paddingLeft: 2,
           }}
         >
+          {/* Botão de voltar para conversas privadas */}
+          {currentView !== 'general' && (
+            <IconButton
+              onClick={switchToGeneral}
+              sx={{
+                color: "#987C5B",
+                marginRight: 1,
+              }}
+            >
+              <ArrowBackIcon />
+            </IconButton>
+          )}
+          
           <Box
             className="icon"
             sx={{
@@ -202,7 +237,10 @@ const Chat = () => {
             fontWeight: "bold",
             marginLeft: 1 
           }}>
-            Grupo Geral - {user?.name} ({users.length} usuários online)
+            {currentView === 'general' 
+              ? `Grupo Geral ` 
+              : `Conversa com ${currentView}`
+            }
           </Box>
         </Box>
 
@@ -407,7 +445,11 @@ const Chat = () => {
 
             <TextField
               className="keyboard input"
-              placeholder={connected ? "Digite sua mensagem... (use @usuario para mensagem privada)" : "Desconectado..."}
+              placeholder={connected ? 
+                (currentView === 'general' 
+                  ? "Digite sua mensagem... (use @usuario para mensagem privada)" 
+                  : `Mensagem para ${currentView}...`
+                ) : "Desconectado..."}
               variant="standard"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
@@ -482,6 +524,9 @@ const Chat = () => {
           </Box>
         </Box>
       </Box>
+
+      {/* Sidebar com lista de usuários */}
+      <UserList />
     </Box>
   );
 };
