@@ -1,6 +1,6 @@
 import React from "react";
 import { useState } from "react";
-import { Box, Button, Typography } from "@mui/material";
+import { Box, Button, Typography, Badge } from "@mui/material";
 import MuiDrawer from "@mui/material/Drawer";
 import LogoutIcon from "@mui/icons-material/Logout";
 import MarkUnreadChatAltOutlinedIcon from "@mui/icons-material/MarkUnreadChatAltOutlined";
@@ -9,12 +9,79 @@ import WifiOutlinedIcon from "@mui/icons-material/WifiOutlined";
 import PersonOutlinedIcon from "@mui/icons-material/PersonOutlined";
 import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
 import DesktopWindowsOutlinedIcon from "@mui/icons-material/DesktopWindowsOutlined";
+import GroupIcon from "@mui/icons-material/Group";
+import ChatIcon from "@mui/icons-material/Chat";
 import AddCircleOutlineOutlinedIcon from "@mui/icons-material/AddCircleOutlineOutlined";
+import WifiOffIcon from "@mui/icons-material/WifiOff";
+import SignalWifiStatusbar4BarIcon from "@mui/icons-material/SignalWifiStatusbar4Bar";
+import { useSocket } from "../context/SocketContext";
+import { useNavigate } from "react-router-dom";
+import { Tooltip } from "@mui/material";
 
 export const drawerWidth = 500;
 
 const DrawerComponent = () => {
   const [isClicked, setIsClicked] = useState(null);
+  const navigate = useNavigate();
+  
+  const { 
+    user, 
+    currentView, 
+    connected,
+    loading,
+    users,
+    ping,
+    switchToGeneral, 
+    switchToPrivateChat,
+    getPrivateChats,
+    disconnect 
+  } = useSocket();
+
+  const privateChats = getPrivateChats();
+
+  const handleLogout = () => {
+    disconnect();
+    navigate("/");
+  };
+
+  // Função para determinar o status da conexão
+  const getConnectionStatus = () => {
+    if (loading) {
+      return {
+        status: 'connecting',
+        text: 'Conectando...',
+        color: '#ff9800', // laranja
+        icon: WifiOutlinedIcon
+      };
+    }
+    
+    if (connected && user) {
+      return {
+        status: 'connected',
+        text: `Conectado como ${user.name} • ${users.length} usuários online`,
+        color: '#4caf50', // verde
+        icon: SignalWifiStatusbar4BarIcon
+      };
+    }
+    
+    if (connected && !user) {
+      return {
+        status: 'connected_no_user',
+        text: 'Conectado ao servidor • Registrando usuário...',
+        color: '#ff9800', // laranja
+        icon: WifiOutlinedIcon
+      };
+    }
+    
+    return {
+      status: 'disconnected',
+      text: 'Desconectado do servidor',
+      color: '#f44336', // vermelho
+      icon: WifiOffIcon
+    };
+  };
+
+  const connectionInfo = getConnectionStatus();
 
   return (
     <Box sx={{ display: "flex" }}>
@@ -139,7 +206,7 @@ const DrawerComponent = () => {
           {/* Botão de logout fixado no rodapé */}
           <Button
               className="exit"
-              onClick={() => console.log("Logout clicado")}
+              onClick={handleLogout}
               sx={{
                 width: "100%",
                 height: "8%",
@@ -238,15 +305,18 @@ const DrawerComponent = () => {
             sx={{
               display: "flex",
               justifyContent: "flex-start",
-              flexDirection: "column",
-              alignItems: "center",
-              width: "100%",
-              height: "84%",
+                          flexDirection: "column",
+            alignItems: "center",
+            width: "100%",
+            height: "80%",
+            overflowY: "auto",
+            paddingTop: 1,
             }}
           >
+            {/* Grupo Geral */}
             <Button
-              className="Chat"
-              onClick={() => setIsClicked(isClicked == 1 ? null : 1)}
+              className="Chat General"
+              onClick={switchToGeneral}
               sx={{
                 display: "flex",
                 justifyContent: "flex-start",
@@ -254,7 +324,8 @@ const DrawerComponent = () => {
                 width: "98%",
                 height: "12%",
                 borderRadius: 3,
-                ...(isClicked == 1 && {
+                marginBottom: 1,
+                ...(currentView === 'general' && {
                   border: "3px solid #3E1D01",
                   bgcolor: "#987C5B",
                 }),
@@ -265,7 +336,7 @@ const DrawerComponent = () => {
               }}
             >
               <Box
-                className="Image Person"
+                className="Image Group"
                 sx={{
                   width: "13%",
                   display: "flex",
@@ -274,7 +345,7 @@ const DrawerComponent = () => {
                   height: "100%",
                 }}
               >
-                <AccountCircleOutlinedIcon
+                <GroupIcon
                   sx={{ color: "#3E1D01", fontSize: 45 }}
                 />
               </Box>
@@ -286,171 +357,330 @@ const DrawerComponent = () => {
                   display: "flex",
                   flexDirection: "column",
                   justifyContent: "center",
-                  alignItems: "center",
+                  alignItems: "flex-start",
                   height: "100%",
+                  paddingLeft: 1,
+                }}
+              >
+                <Typography
+                  sx={{
+                    color: "#532C09",
+                    fontWeight: "bold",
+                    fontSize: "16px",
+                  }}
+                >
+                  Grupo Geral
+                </Typography>
+                <Typography
+                  sx={{
+                    color: "#532C09",
+                    fontSize: "12px",
+                    opacity: 0.8,
+                  }}
+                >
+                  Chat público
+                </Typography>
+              </Box>
+            </Button>
+
+            {/* Título das Conversas Privadas */}
+            {privateChats.length > 0 && (
+              <Box
+                sx={{
+                  width: "98%",
+                  marginTop: 2,
+                  marginBottom: 1,
+                  paddingLeft: 1,
+                }}
+              >
+                <Typography
+                  sx={{
+                    color: "#532C09",
+                    fontSize: "14px",
+                    fontWeight: "bold",
+                    opacity: 0.8,
+                  }}
+                >
+                  CONVERSAS PRIVADAS
+                </Typography>
+              </Box>
+            )}
+
+            {/* Lista de Conversas Privadas */}
+            {privateChats.map((chat) => (
+              <Button
+                key={chat.username}
+                className="Chat Private"
+                onClick={() => switchToPrivateChat(chat.username)}
+                sx={{
+                  display: "flex",
+                  justifyContent: "flex-start",
+                  alignItems: "center",
+                  width: "98%",
+                  height: "12%",
                   borderRadius: 3,
+                  marginBottom: 1,
+                  ...(currentView === chat.username && {
+                    border: "3px solid #3E1D01",
+                    bgcolor: "#987C5B",
+                  }),
+                  "&:hover": {
+                    border: "3px solid #3E1D01",
+                    bgcolor: "#987C5B",
+                  },
                 }}
               >
                 <Box
-                  className="Chat name"
+                  className="Image Person"
                   sx={{
-                    width: "100%",
-                    height: "60%",
+                    width: "13%",
                     display: "flex",
-                    justifyContent: "flex-start",
+                    justifyContent: "center",
                     alignItems: "center",
-                    borderRadius: 3,
-                    color: "#532C09",
+                    height: "100%",
                   }}
                 >
-                  Grupo
+                  <Badge
+                    badgeContent={chat.messageCount}
+                    color="primary"
+                    sx={{
+                      '& .MuiBadge-badge': {
+                        backgroundColor: '#ff9800',
+                        color: 'white',
+                        fontSize: '10px',
+                      },
+                    }}
+                  >
+                    <ChatIcon
+                      sx={{ color: "#3E1D01", fontSize: 40 }}
+                    />
+                  </Badge>
                 </Box>
 
                 <Box
-                  className="Chat name"
+                  className="Info"
                   sx={{
-                    width: "100%",
-                    height: "40%",
+                    width: "87%",
                     display: "flex",
-                    justifyContent: "flex-start",
-                    alignItems: "center",
-                    borderRadius: 3,
-                    color: "#532C09",
+                    flexDirection: "column",
+                    justifyContent: "center",
+                    alignItems: "flex-start",
+                    height: "100%",
+                    paddingLeft: 1,
                   }}
                 >
-                  Mensagem
+                  <Typography
+                    sx={{
+                      color: "#532C09",
+                      fontWeight: "bold",
+                      fontSize: "14px",
+                    }}
+                  >
+                    {chat.username}
+                  </Typography>
+                  <Typography
+                    sx={{
+                      color: "#532C09",
+                      fontSize: "11px",
+                      opacity: 0.7,
+                    }}
+                  >
+                    {chat.lastMessage ? 
+                      (chat.lastMessage.message || chat.lastMessage.fileName || 'Arquivo').substring(0, 25) + '...' 
+                      : 'Nenhuma mensagem'}
+                  </Typography>
                 </Box>
-              </Box>
-            </Button>
-
-            <Button
-              className="Chat"
-              onClick={() => setIsClicked(isClicked == 2 ? null : 2)}
-              sx={{
-                display: "flex",
-                justifyContent: "flex-start",
-                alignItems: "center",
-                width: "98%",
-                height: "12%",
-                borderRadius: 3,
-                ...(isClicked == 2 && {
-                  border: "3px solid #3E1D01",
-                  bgcolor: "#987C5B",
-                }),
-                "&:hover": {
-                  border: "3px solid #3E1D01",
-                  bgcolor: "#987C5B",
-                },
-              }}
-            >
-              <Box
-                className="Image Person"
-                sx={{
-                  width: "13%",
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  height: "100%",
-                }}
-              >
-                <AccountCircleOutlinedIcon
-                  sx={{ color: "#3E1D01", fontSize: 45 }}
-                />
-              </Box>
-
-              <Box
-                className="Info"
-                sx={{
-                  width: "87%",
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  height: "100%",
-                }}
-              >
-                <Box
-                  className="Chat name"
-                  sx={{
-                    width: "100%",
-                    height: "60%",
-                    display: "flex",
-                    justifyContent: "flex-start",
-                    alignItems: "center",
-                    color: "#532C09",
-                  }}
-                >
-                  Grupo 02
-                </Box>
-
-                <Box
-                  className="Chat name"
-                  sx={{
-                    width: "100%",
-                    height: "40%",
-                    display: "flex",
-                    justifyContent: "flex-start",
-                    alignItems: "center",
-                    color: "#532C09",
-                  }}
-                >
-                  Mensagem
-                </Box>
-              </Box>
-            </Button>
+              </Button>
+            ))}
           </Box>
 
-          {/*Rodapé*/}
+          {/*Rodapé - Informações de Conexão*/}
           <Box
             className="Footer"
             sx={{
               display: "flex",
-              justifyContent: "space-evenly",
-              alignItems: "center",
+              flexDirection: "column",
               width: "100%",
-              height: "8%",
+              height: "12%",
+              padding: "6px 8px",
+              borderTop: "1px solid #3E1D01",
             }}
           >
-            {/* Current server */}
+            {/* Linha 1: Ícones lado a lado */}
             <Box
-              className="Server"
               sx={{
-                width: "33%",
                 display: "flex",
-                justifyContent: "center",
+                justifyContent: "space-around",
                 alignItems: "center",
-                height: "100%",
+                width: "100%",
+                height: "45%",
+                marginBottom: "4px",
               }}
             >
-              <DnsOutlinedIcon sx={{ color: "#3E1D01", fontSize: 29 }} />
+              {/* Ícone Servidor */}
+              <Box sx={{ display: "flex", justifyContent: "center", minWidth: "20px" }}>
+                <DnsOutlinedIcon 
+                  sx={{ 
+                    color: connected ? "#4caf50" : "#3E1D01", 
+                    fontSize: 20,
+                    transition: "color 0.3s ease",
+                  }} 
+                />
+              </Box>
+
+              {/* Ícone Status/WiFi */}
+              <Box sx={{ display: "flex", justifyContent: "center", minWidth: "20px" }}>
+                <connectionInfo.icon 
+                  sx={{ 
+                    color: connectionInfo.color, 
+                    fontSize: 20,
+                    transition: "color 0.3s ease",
+                    ...(connectionInfo.status === 'connecting' && {
+                      animation: "pulse 1.5s ease-in-out infinite",
+                      "@keyframes pulse": {
+                        "0%": { opacity: 0.6 },
+                        "50%": { opacity: 1 },
+                        "100%": { opacity: 0.6 },
+                      },
+                    }),
+                  }} 
+                />
+              </Box>
+
+              {/* Ícone Usuário */}
+              <Box sx={{ display: "flex", justifyContent: "center", minWidth: "20px" }}>
+                <PersonOutlinedIcon 
+                  sx={{ 
+                    color: user ? "#4caf50" : "#3E1D01", 
+                    fontSize: 20,
+                    transition: "color 0.3s ease",
+                  }} 
+                />
+              </Box>
             </Box>
 
-            {/* Signal */}
+            {/* Linha 2: Informações embaixo de cada ícone */}
             <Box
-              className="Conection signal"
               sx={{
-                width: "33%",
                 display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                height: "100%",
+                justifyContent: "space-around",
+                alignItems: "flex-start",
+                width: "100%",
+                height: "55%",
+                gap: "4px",
               }}
             >
-              <WifiOutlinedIcon sx={{ color: "#3E1D01", fontSize: 29 }} />
-            </Box>
+              {/* Informações do Servidor */}
+              <Box 
+                sx={{ 
+                  display: "flex", 
+                  flexDirection: "column",
+                  alignItems: "center",
+                  flex: 1,
+                  minWidth: 0, // Permite encolher
+                }}
+              >
+                <Typography
+                  sx={{
+                    color: connected ? "#4caf50" : "#f44336",
+                    fontSize: "8px",
+                    fontWeight: "bold",
+                    textAlign: "center",
+                    lineHeight: 1.2,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    width: "100%",
+                  }}
+                >
+                  :3001
+                </Typography>
+              </Box>
 
-            {/* Usuario atual */}
-            <Box
-              className="User"
-              sx={{
-                width: "33%",
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                height: "100%",
-              }}
-            >
-              <PersonOutlinedIcon sx={{ color: "#3E1D01", fontSize: 29 }} />
+              {/* Informações do Status */}
+              <Box 
+                sx={{ 
+                  display: "flex", 
+                  flexDirection: "column",
+                  alignItems: "center",
+                  flex: 1,
+                  minWidth: 0, // Permite encolher
+                }}
+              >
+                <Typography
+                  sx={{
+                    color: connectionInfo.color,
+                    fontSize: "8px",
+                    fontWeight: "bold",
+                    textAlign: "center",
+                    lineHeight: 1.2,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    width: "100%",
+                  }}
+                >
+                  {connectionInfo.status === 'connected' ? 'Online' : 
+                   connectionInfo.status === 'connecting' ? 'Conectando' : 'Offline'}
+                </Typography>
+                
+                {/* Ping */}
+                {connected && ping !== null && (
+                  <Typography
+                    sx={{
+                      color: ping < 100 ? "#4caf50" : ping < 200 ? "#ff9800" : "#f44336",
+                      fontSize: "8px",
+                      fontWeight: "bold",
+                      textAlign: "center",
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    {ping}ms
+                  </Typography>
+                )}
+              </Box>
+
+              {/* Informações do Usuário */}
+              <Box 
+                sx={{ 
+                  display: "flex", 
+                  flexDirection: "column",
+                  alignItems: "center",
+                  flex: 1,
+                  minWidth: 0, // Permite encolher
+                }}
+              >
+                <Typography
+                  sx={{
+                    color: user ? "#4caf50" : "#3E1D01",
+                    fontSize: "8px",
+                    fontWeight: "bold",
+                    textAlign: "center",
+                    lineHeight: 1.2,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    width: "100%",
+                  }}
+                >
+                  {user ? user.name : "---"}
+                </Typography>
+                
+                {/* Usuários Online */}
+                {connected && (
+                  <Typography
+                    sx={{
+                      color: "#3E1D01",
+                      fontSize: "8px",
+                      fontWeight: "normal",
+                      textAlign: "center",
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    {users.length} on
+                  </Typography>
+                )}
+              </Box>
             </Box>
           </Box>
         </Box>
