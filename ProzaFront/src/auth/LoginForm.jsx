@@ -1,14 +1,27 @@
-import { Box, Button, TextField, Typography, Alert, CircularProgress } from "@mui/material";
+import { Box, Button, TextField, Typography, Alert, CircularProgress, List, ListItem, ListItemButton, ListItemText, ListItemIcon, Divider, IconButton } from "@mui/material";
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import logo from "../assets/logotipo-proza.svg";
 import { useSocket } from "../context/SocketContext";
+import { AccountCircle, Delete, History } from "@mui/icons-material";
+import userCacheService from "../services/userCacheService";
 
 const LoginForm = () => {
   const [usuario, setUsuario] = useState("");
   const [servidor, setServidor] = useState("localhost:3001");
+  const [showCachedUsers, setShowCachedUsers] = useState(false);
   const navigate = useNavigate();
-  const { register, loading, error, user, connect } = useSocket();
+  const { 
+    register, 
+    loading, 
+    error, 
+    user, 
+    connect, 
+    cachedUsers,
+    connectWithCachedUser,
+    removeCachedUser,
+    clearUserCache 
+  } = useSocket();
 
   // Redirecionar se já estiver logado
   React.useEffect(() => {
@@ -30,6 +43,24 @@ const LoginForm = () => {
     } catch (err) {
       console.error('Erro no login:', err);
     }
+  };
+
+  const handleCachedUserClick = async (cachedUser) => {
+    try {
+      await connectWithCachedUser(cachedUser);
+    } catch (err) {
+      console.error('Erro ao conectar com usuário em cache:', err);
+    }
+  };
+
+  const handleRemoveCachedUser = (e, username) => {
+    e.stopPropagation();
+    removeCachedUser(username);
+  };
+
+  const handleClearCache = () => {
+    clearUserCache();
+    setShowCachedUsers(false);
   };
 
   return (
@@ -148,6 +179,99 @@ const LoginForm = () => {
               <Alert severity="error" sx={{ width: "80%", marginBottom: "20px" }}>
                 {error}
               </Alert>
+            )}
+
+            {/* Seção de usuários em cache */}
+            {cachedUsers.length > 0 && (
+              <Box sx={{ width: "80%", marginBottom: "20px" }}>
+                <Box sx={{ display: "flex", alignItems: "center", marginBottom: "10px" }}>
+                  <Button
+                    onClick={() => setShowCachedUsers(!showCachedUsers)}
+                    startIcon={<History />}
+                    sx={{
+                      color: "#F8E6D2",
+                      textTransform: "none",
+                      fontSize: "14px",
+                    }}
+                  >
+                    {showCachedUsers ? "Ocultar" : "Mostrar"} Usuários Recentes ({cachedUsers.length})
+                  </Button>
+                </Box>
+
+                {showCachedUsers && (
+                  <Box
+                    sx={{
+                      backgroundColor: "rgba(248, 230, 210, 0.1)",
+                      borderRadius: 2,
+                      border: "1px solid rgba(248, 230, 210, 0.3)",
+                      maxHeight: "200px",
+                      overflowY: "auto",
+                    }}
+                  >
+                    <List sx={{ padding: 0 }}>
+                      {cachedUsers.map((cachedUser, index) => (
+                        <React.Fragment key={cachedUser.name}>
+                          <ListItem disablePadding>
+                            <ListItemButton
+                              onClick={() => handleCachedUserClick(cachedUser)}
+                              disabled={loading}
+                              sx={{
+                                "&:hover": {
+                                  backgroundColor: "rgba(248, 230, 210, 0.2)",
+                                },
+                              }}
+                            >
+                              <ListItemIcon>
+                                <AccountCircle sx={{ color: "#F8E6D2" }} />
+                              </ListItemIcon>
+                              <ListItemText
+                                primary={cachedUser.name}
+                                secondary={`Última conexão: ${userCacheService.formatLastConnection(cachedUser.lastConnection)} • ${cachedUser.connectionCount} ${cachedUser.connectionCount === 1 ? 'conexão' : 'conexões'}`}
+                                sx={{
+                                  "& .MuiListItemText-primary": {
+                                    color: "#F8E6D2",
+                                    fontWeight: "bold",
+                                  },
+                                  "& .MuiListItemText-secondary": {
+                                    color: "rgba(248, 230, 210, 0.7)",
+                                    fontSize: "12px",
+                                  },
+                                }}
+                              />
+                              <IconButton
+                                onClick={(e) => handleRemoveCachedUser(e, cachedUser.name)}
+                                sx={{ color: "rgba(248, 230, 210, 0.7)" }}
+                                size="small"
+                              >
+                                <Delete fontSize="small" />
+                              </IconButton>
+                            </ListItemButton>
+                          </ListItem>
+                          {index < cachedUsers.length - 1 && (
+                            <Divider sx={{ backgroundColor: "rgba(248, 230, 210, 0.2)" }} />
+                          )}
+                        </React.Fragment>
+                      ))}
+                    </List>
+                    
+                    {cachedUsers.length > 1 && (
+                      <Box sx={{ padding: 1, borderTop: "1px solid rgba(248, 230, 210, 0.2)" }}>
+                        <Button
+                          onClick={handleClearCache}
+                          size="small"
+                          sx={{
+                            color: "rgba(248, 230, 210, 0.7)",
+                            fontSize: "12px",
+                            textTransform: "none",
+                          }}
+                        >
+                          Limpar todos os usuários salvos
+                        </Button>
+                      </Box>
+                    )}
+                  </Box>
+                )}
+              </Box>
             )}
 
             <TextField

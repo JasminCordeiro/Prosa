@@ -44,9 +44,11 @@ O frontend irá iniciar na porta **5173** por padrão.
    - **Grupo Geral**: Todos entram automaticamente neste grupo
    - **Mensagens públicas**: Enviadas no grupo geral, todos veem
    - **Conversas privadas**: Clique em um usuário na sidebar para iniciar
-   - **Navegação**: Use a sidebar direita para alternar entre grupo e conversas
+   - **Navegação**: Use o drawer esquerdo para alternar entre grupo e conversas
+   - **Cache de usuários**: Usuários ficam salvos para reconexão rápida
+   - **Reconexão**: Clique em usuários salvos na tela de login
    - **Envio de arquivos**: Funciona tanto no grupo quanto em conversas privadas
-   - **Lista de usuários**: Visualize todos os usuários online na sidebar
+   - **Lista de usuários**: Visualize todos os usuários online na sidebar direita
 
 ## 🔧 Funcionalidades Implementadas
 
@@ -68,7 +70,10 @@ O frontend irá iniciar na porta **5173** por padrão.
 - ✅ **Conversas Privadas**: Separadas do grupo geral
 - ✅ **Sidebar com usuários**: Lista de usuários online no lado direito
 - ✅ **Navegação**: Alternância entre grupo geral e conversas privadas
-- ✅ Indicadores visuais de conexão
+- ✅ **Cache de Usuários**: Usuários salvos no localStorage para reconexão rápida
+- ✅ **Reconexão Automática**: Clique em usuários salvos para reconectar rapidamente
+- ✅ **Indicadores de Conexão**: Status visual dinâmico com cores e tooltips
+- ✅ **Status em Tempo Real**: WiFi, servidor e usuário com indicadores coloridos
 - ✅ Upload de arquivos
 - ✅ Scroll automático para novas mensagens
 
@@ -98,9 +103,26 @@ O frontend irá iniciar na porta **5173** por padrão.
 2. Selecione um arquivo
 3. Teste tanto no grupo geral quanto em conversas privadas
 
-### Teste 5: Reconexão
+### Teste 5: Cache de Usuários
+1. **Faça login** com um usuário
+2. **Desconecte** (botão logout no drawer)
+3. **Verifique** se aparece "Usuários Recentes" na tela de login
+4. **Clique** em "Mostrar Usuários Recentes"
+5. **Reconecte** clicando no usuário salvo
+6. **Teste remoção** individual com o ícone de lixeira
+7. **Teste limpeza geral** com "Limpar todos os usuários salvos"
+
+### Teste 6: Indicadores de Conexão
+1. **Observe os ícones** no rodapé do drawer esquerdo
+2. **Servidor** (DNS): Verde = online, Cinza = offline
+3. **WiFi**: Verde = conectado, Laranja = conectando, Vermelho = desconectado
+4. **Usuário**: Verde = logado, Cinza = não logado
+5. **Passe o mouse** sobre os ícones para ver tooltips informativos
+6. **Teste estados**: Desligue/ligue o backend para ver mudanças
+
+### Teste 7: Reconexão
 1. Pare o backend
-2. Verifique se o frontend mostra erro
+2. Verifique se o frontend mostra erro e ícones ficam vermelhos
 3. Reinicie o backend
 4. Recarregue a página e teste novamente
 
@@ -153,6 +175,15 @@ Backend TCP Server (Net)
 - **Usuários Online**: Lista de todos os usuários conectados
 - **Interação**: Clique em qualquer usuário para iniciar conversa privada
 - **Status**: Seu próprio nome aparece destacado
+
+### Indicadores de Conexão (Rodapé do Drawer)
+- **Layout**: Ícones lado a lado na parte superior, informações embaixo de cada ícone
+- **Servidor**: Ícone DNS + porta (localhost:3001)
+- **Status**: Ícone WiFi + status da conexão + ping em tempo real
+- **Usuário**: Ícone pessoa + nome do usuário + contador de usuários online
+- **Ping em Tempo Real**: Medição de latência a cada 3 segundos
+- **Cores Dinâmicas**: Verde (< 100ms), Laranja (100-200ms), Vermelho (> 200ms)
+- **Design**: 3 colunas organizadas com ícones de 24px e textos centralizados
 
 ## 🔄 Próximos Passos Sugeridos
 

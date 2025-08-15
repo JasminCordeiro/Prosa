@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import socketService from '../services/socketService';
+import userCacheService from '../services/userCacheService';
 
 const SocketContext = createContext();
 
@@ -20,6 +21,15 @@ export const SocketProvider = ({ children }) => {
   const [currentView, setCurrentView] = useState('general'); // 'general' ou username para conversa privada
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [cachedUsers, setCachedUsers] = useState([]); // Usuários em cache
+  const [ping, setPing] = useState(null); // Latência da conexão
+
+  // Carregar usuários do cache quando o componente monta
+  useEffect(() => {
+    const cached = userCacheService.getCachedUsers();
+    setCachedUsers(cached);
+    console.log('Usuários carregados do cache:', cached.length);
+  }, []);
 
   // Conectar ao servidor
   const connect = useCallback(async () => {
@@ -81,6 +91,13 @@ export const SocketProvider = ({ children }) => {
 
   // Desconectar
   const disconnect = useCallback(() => {
+    // Salvar usuário atual no cache antes de desconectar
+    if (user) {
+      userCacheService.updateLastConnection(user.name);
+      setCachedUsers(userCacheService.getCachedUsers());
+      console.log('Usuário salvo no cache ao desconectar:', user.name);
+    }
+    
     socketService.disconnect();
     setConnected(false);
     setUser(null);
@@ -88,7 +105,7 @@ export const SocketProvider = ({ children }) => {
     setPrivateConversations({});
     setUsers([]);
     setCurrentView('general');
-  }, []);
+  }, [user]);
 
   // Alternar entre grupo geral e conversa privada
   const switchToGeneral = useCallback(() => {
@@ -126,6 +143,44 @@ export const SocketProvider = ({ children }) => {
     }));
   }, [privateConversations]);
 
+  // Funções para gerenciar cache
+  const getCachedUsers = useCallback(() => {
+    return cachedUsers;
+  }, [cachedUsers]);
+
+  const getLastUser = useCallback(() => {
+    return userCacheService.getLastUser();
+  }, []);
+
+  const removeCachedUser = useCallback((username) => {
+    userCacheService.removeUser(username);
+    setCachedUsers(userCacheService.getCachedUsers());
+  }, []);
+
+  const clearUserCache = useCallback(() => {
+    userCacheService.clearCache();
+    setCachedUsers([]);
+  }, []);
+
+  const connectWithCachedUser = useCallback(async (cachedUser) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      console.log('Conectando com usuário em cache:', cachedUser.name);
+      
+      if (!connected) {
+        await connect();
+      }
+      
+      socketService.register(cachedUser.name);
+    } catch (err) {
+      setError('Erro ao conectar com usuário em cache');
+      console.error('Erro na conexão com cache:', err);
+      setLoading(false);
+    }
+  }, [connected, connect]);
+
   // Configurar listeners quando o componente monta
   useEffect(() => {
     // Callback para sucesso no registro
@@ -142,6 +197,14 @@ export const SocketProvider = ({ children }) => {
       setUsers(data.users || []);
       setError(null);
       setLoading(false);
+      
+      // Salvar usuário no cache
+      userCacheService.saveUser(newUser);
+      setCachedUsers(userCacheService.getCachedUsers());
+      
+      // Iniciar medição de ping
+      socketService.startPingMeasurement();
+      
       console.log('Estado atualizado - usuário:', userName, 'ID:', data.clientId);
     };
 
@@ -229,6 +292,7 @@ export const SocketProvider = ({ children }) => {
     const onDisconnect = () => {
       setConnected(false);
       setUser(null);
+      setPing(null);
       setError('Desconectado do servidor');
     };
 
@@ -237,6 +301,11 @@ export const SocketProvider = ({ children }) => {
       setError(data.message);
       setConnected(false);
       setUser(null);
+    };
+
+    // Callback para atualização de ping
+    const onPingUpdate = (pingValue) => {
+      setPing(pingValue);
     };
 
     // Registrar callbacks
@@ -250,6 +319,7 @@ export const SocketProvider = ({ children }) => {
     socketService.on('error', onError);
     socketService.on('disconnect', onDisconnect);
     socketService.on('server-shutdown', onServerShutdown);
+    socketService.on('ping-update', onPingUpdate);
 
     // Cleanup
     return () => {
@@ -263,6 +333,7 @@ export const SocketProvider = ({ children }) => {
       socketService.off('error', onError);
       socketService.off('disconnect', onDisconnect);
       socketService.off('server-shutdown', onServerShutdown);
+      socketService.off('ping-update', onPingUpdate);
     };
   }, []);
 
@@ -286,6 +357,8 @@ export const SocketProvider = ({ children }) => {
     currentView,
     loading,
     error,
+    cachedUsers,
+    ping,
     
     // Ações
     connect,
@@ -305,7 +378,14 @@ export const SocketProvider = ({ children }) => {
     clearMessages: () => {
       setGroupMessages([]);
       setPrivateConversations({});
-    }
+    },
+    
+    // Gerenciamento de cache
+    getCachedUsers,
+    getLastUser,
+    removeCachedUser,
+    clearUserCache,
+    connectWithCachedUser
   };
 
   return (

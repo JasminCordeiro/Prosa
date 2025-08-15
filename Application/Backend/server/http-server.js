@@ -220,6 +220,11 @@ class HttpServerManager {
                 }
             })
 
+            // Evento de ping para medir latência
+            socket.on('ping', (timestamp) => {
+                socket.emit('pong', timestamp)
+            })
+
             // Evento de erro
             socket.on('error', (error) => {
                 logger.serverLogger.error(`Erro WebSocket: ${error}`)

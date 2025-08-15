@@ -12,8 +12,11 @@ import DesktopWindowsOutlinedIcon from "@mui/icons-material/DesktopWindowsOutlin
 import GroupIcon from "@mui/icons-material/Group";
 import ChatIcon from "@mui/icons-material/Chat";
 import AddCircleOutlineOutlinedIcon from "@mui/icons-material/AddCircleOutlineOutlined";
+import WifiOffIcon from "@mui/icons-material/WifiOff";
+import SignalWifiStatusbar4BarIcon from "@mui/icons-material/SignalWifiStatusbar4Bar";
 import { useSocket } from "../context/SocketContext";
 import { useNavigate } from "react-router-dom";
+import { Tooltip } from "@mui/material";
 
 export const drawerWidth = 500;
 
@@ -25,6 +28,9 @@ const DrawerComponent = () => {
     user, 
     currentView, 
     connected,
+    loading,
+    users,
+    ping,
     switchToGeneral, 
     switchToPrivateChat,
     getPrivateChats,
@@ -37,6 +43,45 @@ const DrawerComponent = () => {
     disconnect();
     navigate("/");
   };
+
+  // Função para determinar o status da conexão
+  const getConnectionStatus = () => {
+    if (loading) {
+      return {
+        status: 'connecting',
+        text: 'Conectando...',
+        color: '#ff9800', // laranja
+        icon: WifiOutlinedIcon
+      };
+    }
+    
+    if (connected && user) {
+      return {
+        status: 'connected',
+        text: `Conectado como ${user.name} • ${users.length} usuários online`,
+        color: '#4caf50', // verde
+        icon: SignalWifiStatusbar4BarIcon
+      };
+    }
+    
+    if (connected && !user) {
+      return {
+        status: 'connected_no_user',
+        text: 'Conectado ao servidor • Registrando usuário...',
+        color: '#ff9800', // laranja
+        icon: WifiOutlinedIcon
+      };
+    }
+    
+    return {
+      status: 'disconnected',
+      text: 'Desconectado do servidor',
+      color: '#f44336', // vermelho
+      icon: WifiOffIcon
+    };
+  };
+
+  const connectionInfo = getConnectionStatus();
 
   return (
     <Box sx={{ display: "flex" }}>
@@ -260,12 +305,12 @@ const DrawerComponent = () => {
             sx={{
               display: "flex",
               justifyContent: "flex-start",
-              flexDirection: "column",
-              alignItems: "center",
-              width: "100%",
-              height: "84%",
-              overflowY: "auto",
-              paddingTop: 1,
+                          flexDirection: "column",
+            alignItems: "center",
+            width: "100%",
+            height: "80%",
+            overflowY: "auto",
+            paddingTop: 1,
             }}
           >
             {/* Grupo Geral */}
@@ -449,57 +494,193 @@ const DrawerComponent = () => {
             ))}
           </Box>
 
-          {/*Rodapé*/}
+          {/*Rodapé - Informações de Conexão*/}
           <Box
             className="Footer"
             sx={{
               display: "flex",
-              justifyContent: "space-evenly",
-              alignItems: "center",
+              flexDirection: "column",
               width: "100%",
-              height: "8%",
+              height: "12%",
+              padding: "6px 8px",
+              borderTop: "1px solid #3E1D01",
             }}
           >
-            {/* Current server */}
+            {/* Linha 1: Ícones lado a lado */}
             <Box
-              className="Server"
               sx={{
-                width: "33%",
                 display: "flex",
-                justifyContent: "center",
+                justifyContent: "space-around",
                 alignItems: "center",
-                height: "100%",
+                width: "100%",
+                height: "45%",
+                marginBottom: "4px",
               }}
             >
-              <DnsOutlinedIcon sx={{ color: "#3E1D01", fontSize: 29 }} />
+              {/* Ícone Servidor */}
+              <Box sx={{ display: "flex", justifyContent: "center", minWidth: "20px" }}>
+                <DnsOutlinedIcon 
+                  sx={{ 
+                    color: connected ? "#4caf50" : "#3E1D01", 
+                    fontSize: 20,
+                    transition: "color 0.3s ease",
+                  }} 
+                />
+              </Box>
+
+              {/* Ícone Status/WiFi */}
+              <Box sx={{ display: "flex", justifyContent: "center", minWidth: "20px" }}>
+                <connectionInfo.icon 
+                  sx={{ 
+                    color: connectionInfo.color, 
+                    fontSize: 20,
+                    transition: "color 0.3s ease",
+                    ...(connectionInfo.status === 'connecting' && {
+                      animation: "pulse 1.5s ease-in-out infinite",
+                      "@keyframes pulse": {
+                        "0%": { opacity: 0.6 },
+                        "50%": { opacity: 1 },
+                        "100%": { opacity: 0.6 },
+                      },
+                    }),
+                  }} 
+                />
+              </Box>
+
+              {/* Ícone Usuário */}
+              <Box sx={{ display: "flex", justifyContent: "center", minWidth: "20px" }}>
+                <PersonOutlinedIcon 
+                  sx={{ 
+                    color: user ? "#4caf50" : "#3E1D01", 
+                    fontSize: 20,
+                    transition: "color 0.3s ease",
+                  }} 
+                />
+              </Box>
             </Box>
 
-            {/* Signal */}
+            {/* Linha 2: Informações embaixo de cada ícone */}
             <Box
-              className="Conection signal"
               sx={{
-                width: "33%",
                 display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                height: "100%",
+                justifyContent: "space-around",
+                alignItems: "flex-start",
+                width: "100%",
+                height: "55%",
+                gap: "4px",
               }}
             >
-              <WifiOutlinedIcon sx={{ color: "#3E1D01", fontSize: 29 }} />
-            </Box>
+              {/* Informações do Servidor */}
+              <Box 
+                sx={{ 
+                  display: "flex", 
+                  flexDirection: "column",
+                  alignItems: "center",
+                  flex: 1,
+                  minWidth: 0, // Permite encolher
+                }}
+              >
+                <Typography
+                  sx={{
+                    color: connected ? "#4caf50" : "#f44336",
+                    fontSize: "8px",
+                    fontWeight: "bold",
+                    textAlign: "center",
+                    lineHeight: 1.2,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    width: "100%",
+                  }}
+                >
+                  :3001
+                </Typography>
+              </Box>
 
-            {/* Usuario atual */}
-            <Box
-              className="User"
-              sx={{
-                width: "33%",
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                height: "100%",
-              }}
-            >
-              <PersonOutlinedIcon sx={{ color: "#3E1D01", fontSize: 29 }} />
+              {/* Informações do Status */}
+              <Box 
+                sx={{ 
+                  display: "flex", 
+                  flexDirection: "column",
+                  alignItems: "center",
+                  flex: 1,
+                  minWidth: 0, // Permite encolher
+                }}
+              >
+                <Typography
+                  sx={{
+                    color: connectionInfo.color,
+                    fontSize: "8px",
+                    fontWeight: "bold",
+                    textAlign: "center",
+                    lineHeight: 1.2,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    width: "100%",
+                  }}
+                >
+                  {connectionInfo.status === 'connected' ? 'Online' : 
+                   connectionInfo.status === 'connecting' ? 'Conectando' : 'Offline'}
+                </Typography>
+                
+                {/* Ping */}
+                {connected && ping !== null && (
+                  <Typography
+                    sx={{
+                      color: ping < 100 ? "#4caf50" : ping < 200 ? "#ff9800" : "#f44336",
+                      fontSize: "8px",
+                      fontWeight: "bold",
+                      textAlign: "center",
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    {ping}ms
+                  </Typography>
+                )}
+              </Box>
+
+              {/* Informações do Usuário */}
+              <Box 
+                sx={{ 
+                  display: "flex", 
+                  flexDirection: "column",
+                  alignItems: "center",
+                  flex: 1,
+                  minWidth: 0, // Permite encolher
+                }}
+              >
+                <Typography
+                  sx={{
+                    color: user ? "#4caf50" : "#3E1D01",
+                    fontSize: "8px",
+                    fontWeight: "bold",
+                    textAlign: "center",
+                    lineHeight: 1.2,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    width: "100%",
+                  }}
+                >
+                  {user ? user.name : "---"}
+                </Typography>
+                
+                {/* Usuários Online */}
+                {connected && (
+                  <Typography
+                    sx={{
+                      color: "#3E1D01",
+                      fontSize: "8px",
+                      fontWeight: "normal",
+                      textAlign: "center",
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    {users.length} on
+                  </Typography>
+                )}
+              </Box>
             </Box>
           </Box>
         </Box>

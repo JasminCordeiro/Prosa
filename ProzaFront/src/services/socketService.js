@@ -6,6 +6,8 @@ class SocketService {
     this.connected = false;
     this.user = null;
     this.eventCallbacks = new Map();
+    this.ping = null;
+    this.pingInterval = null;
   }
 
   // Conectar ao servidor
@@ -94,6 +96,15 @@ class SocketService {
       console.warn('Servidor desativado:', data);
       this.emitToCallbacks('server-shutdown', data);
     });
+
+    // Listener para resposta de ping
+    this.socket.on('pong', (timestamp) => {
+      if (timestamp) {
+        const currentTime = Date.now();
+        this.ping = currentTime - timestamp;
+        this.emitToCallbacks('ping-update', this.ping);
+      }
+    });
   }
 
   // Registrar usuário
@@ -163,8 +174,36 @@ class SocketService {
     }
   }
 
+  // Iniciar medição de ping
+  startPingMeasurement() {
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
+    }
+    
+    this.pingInterval = setInterval(() => {
+      if (this.socket && this.connected) {
+        this.socket.emit('ping', Date.now());
+      }
+    }, 3000); // Medir ping a cada 3 segundos
+  }
+
+  // Parar medição de ping
+  stopPingMeasurement() {
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
+      this.pingInterval = null;
+    }
+    this.ping = null;
+  }
+
+  // Obter ping atual
+  getPing() {
+    return this.ping;
+  }
+
   // Desconectar
   disconnect() {
+    this.stopPingMeasurement();
     if (this.socket) {
       this.socket.disconnect();
       this.socket = null;
