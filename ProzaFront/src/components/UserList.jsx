@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Box, 
   Typography, 
@@ -6,19 +6,57 @@ import {
   ListItem, 
   ListItemButton, 
   ListItemText, 
-  ListItemIcon
+  ListItemIcon,
+  IconButton,
+  Tooltip,
+  CircularProgress
 } from '@mui/material';
 import { 
-  AccountCircle
+  AccountCircle,
+  Refresh
 } from '@mui/icons-material';
 import { useSocket } from '../context/SocketContext';
+
+// CSS para animação de rotação
+const spinKeyframes = `
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+`;
 
 const UserList = () => {
   const { 
     users, 
     user, 
-    switchToPrivateChat
+    switchToPrivateChat,
+    refreshUserList,
+    loading
   } = useSocket();
+
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refreshUserList();
+    } finally {
+      // Adicionar um pequeno delay para mostrar feedback visual
+      setTimeout(() => {
+        setIsRefreshing(false);
+      }, 500);
+    }
+  };
+
+  // Injetar CSS da animação
+  React.useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = spinKeyframes;
+    document.head.appendChild(style);
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
 
   return (
     <Box
@@ -38,22 +76,63 @@ const UserList = () => {
           borderBottom: '1px solid rgba(248, 230, 210, 0.3)',
         }}
       >
-        <Typography
-          variant="h6"
-          sx={{
-            color: '#F8E6D2',
-            fontWeight: 'bold',
-            textAlign: 'center',
+        <Box 
+          sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between',
+            marginBottom: 0.5 
           }}
         >
-          Usuários Online
-        </Typography>
+          <Typography
+            variant="h6"
+            sx={{
+              color: '#F8E6D2',
+              fontWeight: 'bold',
+              flex: 1,
+              textAlign: 'center',
+            }}
+          >
+            Usuários Online
+          </Typography>
+          
+          <Tooltip title="Atualizar lista de usuários" arrow>
+            <IconButton
+              onClick={handleRefresh}
+              disabled={isRefreshing || loading}
+              size="small"
+              sx={{
+                color: '#F8E6D2',
+                '&:hover': {
+                  backgroundColor: 'rgba(248, 230, 210, 0.1)',
+                },
+                '&:disabled': {
+                  color: 'rgba(248, 230, 210, 0.3)',
+                }
+              }}
+            >
+              {isRefreshing ? (
+                <CircularProgress 
+                  size={20} 
+                  sx={{ color: '#F8E6D2' }} 
+                />
+              ) : (
+                <Refresh 
+                  sx={{ 
+                    fontSize: 20,
+                    animation: isRefreshing ? 'spin 1s linear infinite' : 'none',
+                  }} 
+                />
+              )}
+            </IconButton>
+          </Tooltip>
+        </Box>
+        
         <Typography
           variant="body2"
           sx={{
             color: 'rgba(248, 230, 210, 0.7)',
             textAlign: 'center',
-            marginTop: 0.5,
           }}
         >
           {users.length} conectados
@@ -80,6 +159,9 @@ const UserList = () => {
               <ListItemButton
                 onClick={() => {
                   if (onlineUser.name !== user?.name) {
+                    console.log(`[FRONTEND] Iniciando conversa privada com: ${onlineUser.name}`);
+                    console.log(`[FRONTEND] IP do destinatário: ${onlineUser.ip}`);
+                    console.log(`[FRONTEND] Preparando para buscar IP no servidor quando enviar mensagem...`);
                     switchToPrivateChat(onlineUser.name);
                   }
                 }}
@@ -104,13 +186,14 @@ const UserList = () => {
                   />
                 </ListItemIcon>
                 <ListItemText
-                  primary={onlineUser.name}
+                  primary={`${onlineUser.name} ${onlineUser.ip ? `(${onlineUser.ip})` : ''}`}
                   secondary={onlineUser.name === user?.name ? 'Você' : 'Iniciar conversa'}
                   sx={{
                     '& .MuiListItemText-primary': {
                       color: onlineUser.name === user?.name ? '#ff9800' : '#F8E6D2',
                       fontWeight: onlineUser.name === user?.name ? 'bold' : 'normal',
-                      fontSize: '14px',
+                      fontSize: '12px',
+                      lineHeight: 1.2,
                     },
                     '& .MuiListItemText-secondary': {
                       color: 'rgba(248, 230, 210, 0.6)',

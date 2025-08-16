@@ -14,8 +14,10 @@
   "author": "JasminCordeiro, glermFF, vitwra",
   "scripts": {
     "server": "node Backend/server/server.js",
+    "network-server": "node start-server.js",
     "client": "node Backend/client/main.js",
-    "dev": "node Backend/server/server.js",
+    "network-client": "node Backend/client/network-client.js",
+    "dev": "node start-server.js",
     "install-deps": "npm install"
   },
   "dependencies": {

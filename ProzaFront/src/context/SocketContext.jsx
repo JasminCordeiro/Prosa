@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import socketService from '../services/socketService';
 import userCacheService from '../services/userCacheService';
+import directConnectionService from '../services/directConnectionService';
 
 const SocketContext = createContext();
 
@@ -136,11 +137,24 @@ export const SocketProvider = ({ children }) => {
 
   // Obter conversas privadas com contadores de mensagens não lidas
   const getPrivateChats = useCallback(() => {
-    return Object.keys(privateConversations).map(username => ({
+    const regularChats = Object.keys(privateConversations).map(username => ({
       username,
       messageCount: privateConversations[username].length,
-      lastMessage: privateConversations[username][privateConversations[username].length - 1]
+      lastMessage: privateConversations[username][privateConversations[username].length - 1],
+      type: 'regular'
     }));
+
+    // Adicionar conversas de IP direto
+    const directConnections = directConnectionService?.getConnectedServers() || [];
+    const ipChats = directConnections.map(serverIP => ({
+      username: serverIP,
+      messageCount: 0, // Por enquanto, sem contador para IP
+      lastMessage: null,
+      type: 'ip',
+      serverInfo: directConnectionService?.getServerInfo(serverIP)
+    }));
+
+    return [...regularChats, ...ipChats];
   }, [privateConversations]);
 
   // Funções para gerenciar cache
@@ -180,6 +194,54 @@ export const SocketProvider = ({ children }) => {
       setLoading(false);
     }
   }, [connected, connect]);
+
+  // Excluir conversa privada
+  const deletePrivateChat = useCallback((username, type = 'regular') => {
+    if (type === 'regular') {
+      // Remover conversa privada normal
+      setPrivateConversations(prev => {
+        const updated = { ...prev };
+        delete updated[username];
+        return updated;
+      });
+      
+      // Se estava vendo esta conversa, voltar para o grupo geral
+      if (currentView === username) {
+        setCurrentView('general');
+      }
+      
+      console.log(`Conversa privada com ${username} excluída`);
+    } else if (type === 'ip') {
+      // Desconectar do servidor IP
+      directConnectionService.disconnectFromServer(username);
+      
+      // Se estava vendo esta conversa, voltar para o grupo geral
+      if (currentView === username) {
+        setCurrentView('general');
+      }
+      
+      console.log(`Conexão direta com servidor ${username} encerrada`);
+    }
+  }, [currentView]);
+
+  // Atualizar lista de usuários
+  const refreshUserList = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      console.log('Atualizando lista de usuários...');
+      const updatedUsers = await socketService.getUsers();
+      setUsers(updatedUsers);
+      
+      console.log('Lista de usuários atualizada:', updatedUsers.length, 'usuários');
+    } catch (err) {
+      setError('Erro ao atualizar lista de usuários');
+      console.error('Erro no refresh da lista:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   // Configurar listeners quando o componente monta
   useEffect(() => {
@@ -385,7 +447,13 @@ export const SocketProvider = ({ children }) => {
     getLastUser,
     removeCachedUser,
     clearUserCache,
-    connectWithCachedUser
+    connectWithCachedUser,
+    
+    // Atualização da lista
+    refreshUserList,
+    
+    // Gerenciamento de conversas
+    deletePrivateChat
   };
 
   return (

@@ -18,16 +18,16 @@ O objetivo deste trabalho é aplicar conceitos de comunicação em rede usando *
 
 ---
 
-## ⚙️ Funcionamento
+## Funcionamento
 
-### 🔗 Servidor
+### Servidor
 
 - Escuta conexões na porta `2004`.
 - Registra os usuários com nome e IP.
 - Armazena os dados em memória.
 - Fornece a lista de usuários conectados aos novos clientes.
 
-### 🧑‍💻 Cliente
+### Cliente
 
 - Interface desenvolvida em React.js.
 - Tela inicial para

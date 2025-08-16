@@ -96,13 +96,13 @@
 
             socket.on('connect', () => {
                 connected = true;
-                log('✅ Socket conectado! ID: ' + socket.id, 'success');
+                log('Socket conectado! ID: ' + socket.id, 'success');
                 updateConnectionStatus('Conectado - ID: ' + socket.id, 'success');
             });
 
             socket.on('connect_error', (error) => {
                 connected = false;
-                log('❌ Erro de conexão: ' + error.message, 'error');
+                log('Erro de conexão: ' + error.message, 'error');
                 updateConnectionStatus('Erro: ' + error.message, 'error');
             });
 
@@ -121,13 +121,13 @@
                     id: data.clientId,
                     name: data.message ? data.message.replace('Bem-vindo ', '') : 'unknown'
                 };
-                log('✅ Registro bem-sucedido: ' + JSON.stringify(data), 'success');
+                log('Registro bem-sucedido: ' + JSON.stringify(data), 'success');
                 updateRegisterStatus('Registrado - ' + user.name, 'success');
             });
 
             socket.on('register-error', (data) => {
                 registered = false;
-                log('❌ Erro no registro: ' + data.message, 'error');
+                log('Erro no registro: ' + data.message, 'error');
                 updateRegisterStatus('Erro: ' + data.message, 'error');
             });
 
@@ -145,20 +145,20 @@
             });
 
             socket.on('error', (error) => {
-                log('❌ Erro do servidor: ' + JSON.stringify(error), 'error');
+                log('Erro do servidor: ' + JSON.stringify(error), 'error');
             });
         }
 
         function registerUser() {
             if (!connected) {
-                log('❌ Socket não está conectado. Execute o teste de conexão primeiro.', 'error');
+                log('Socket não está conectado. Execute o teste de conexão primeiro.', 'error');
                 updateRegisterStatus('Socket não conectado', 'error');
                 return;
             }
 
             const username = document.getElementById('username').value.trim();
             if (!username) {
-                log('❌ Nome de usuário não pode estar vazio', 'error');
+                log('Nome de usuário não pode estar vazio', 'error');
                 updateRegisterStatus('Nome vazio', 'error');
                 return;
             }
@@ -170,26 +170,26 @@
 
         function sendMessage() {
             if (!connected || !registered) {
-                log('❌ Usuário não está conectado ou registrado', 'error');
+                log('Usuário não está conectado ou registrado', 'error');
                 updateMessageStatus('Não conectado/registrado', 'error');
                 return;
             }
 
             const message = document.getElementById('message').value.trim();
             if (!message) {
-                log('❌ Mensagem não pode estar vazia', 'error');
+                log('Mensagem não pode estar vazia', 'error');
                 updateMessageStatus('Mensagem vazia', 'error');
                 return;
             }
 
-            log('📤 Enviando mensagem: ' + message, 'info');
+            log('Enviando mensagem: ' + message, 'info');
             updateMessageStatus('Enviando...', 'warning');
             socket.emit('send-message', { message, type: 'text' });
         }
 
         // Auto conectar quando a página carrega
         window.onload = () => {
-            log('🎯 Página carregada. Clique em "Testar Conexão" para começar.', 'info');
+            log('Página carregada. Clique em "Testar Conexão" para começar.', 'info');
         };
     </script>
 </body>
