@@ -1,6 +1,18 @@
 import React from "react";
 import { useState } from "react";
-import { Box, Button, Typography, Badge } from "@mui/material";
+import { 
+  Box, 
+  Button, 
+  Typography, 
+  Badge,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Alert,
+  CircularProgress 
+} from "@mui/material";
 import MuiDrawer from "@mui/material/Drawer";
 import LogoutIcon from "@mui/icons-material/Logout";
 import MarkUnreadChatAltOutlinedIcon from "@mui/icons-material/MarkUnreadChatAltOutlined";
@@ -14,14 +26,22 @@ import ChatIcon from "@mui/icons-material/Chat";
 import AddCircleOutlineOutlinedIcon from "@mui/icons-material/AddCircleOutlineOutlined";
 import WifiOffIcon from "@mui/icons-material/WifiOff";
 import SignalWifiStatusbar4BarIcon from "@mui/icons-material/SignalWifiStatusbar4Bar";
+import DeleteIcon from "@mui/icons-material/Delete";
+import LanguageIcon from "@mui/icons-material/Language";
 import { useSocket } from "../context/SocketContext";
 import { useNavigate } from "react-router-dom";
 import { Tooltip } from "@mui/material";
+import directConnectionService from "../services/directConnectionService";
 
 export const drawerWidth = 500;
 
 const DrawerComponent = () => {
   const [isClicked, setIsClicked] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [targetIP, setTargetIP] = useState('');
+  const [connectionError, setConnectionError] = useState('');
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [connectedServers, setConnectedServers] = useState([]);
   const navigate = useNavigate();
   
   const { 
@@ -34,14 +54,118 @@ const DrawerComponent = () => {
     switchToGeneral, 
     switchToPrivateChat,
     getPrivateChats,
-    disconnect 
+    disconnect,
+    deletePrivateChat
   } = useSocket();
 
   const privateChats = getPrivateChats();
 
+  // Monitorar conexões diretas
+  React.useEffect(() => {
+    const updateConnectedServers = () => {
+      const servers = directConnectionService.getConnectedServers();
+      setConnectedServers(servers);
+    };
+
+    // Atualizar inicialmente
+    updateConnectedServers();
+
+    // Configurar um intervalo para verificar conexões
+    const interval = setInterval(updateConnectedServers, 2000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   const handleLogout = () => {
     disconnect();
     navigate("/");
+  };
+
+  // Funções para gerenciar conexão por IP
+  const handleOpenModal = () => {
+    setIsModalOpen(true);
+    setTargetIP('');
+    setConnectionError('');
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setTargetIP('');
+    setConnectionError('');
+    setIsConnecting(false);
+  };
+
+  const handleConnectToIP = async () => {
+    if (!targetIP.trim()) {
+      setConnectionError('Digite um IP válido');
+      return;
+    }
+
+    // Validação básica de IP
+    const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$|^localhost$/;
+    if (!ipRegex.test(targetIP.trim())) {
+      setConnectionError('Formato de IP inválido. Use formato: 192.168.1.100 ou localhost');
+      return;
+    }
+
+    setIsConnecting(true);
+    setConnectionError('');
+
+    try {
+      console.log(`[DIRECT CONNECTION] Tentando conectar ao IP: ${targetIP}`);
+      
+      // Usar o serviço de conexão direta
+      const connection = await directConnectionService.connectToServer(targetIP.trim());
+      
+      console.log(`[DIRECT CONNECTION] Conectado com sucesso:`, connection);
+
+      // Registrar o usuário atual no servidor remoto (se estiver logado)
+      if (user && user.name) {
+        console.log(`[DIRECT CONNECTION] Registrando usuário ${user.name} no servidor ${targetIP}`);
+        directConnectionService.registerOnServer(targetIP.trim(), user.name);
+      }
+
+      // Criar uma nova aba/conversa para este IP
+      const ipConnectionName = `${targetIP}`;
+      console.log(`[DIRECT CONNECTION] Iniciando conversa com: ${ipConnectionName}`);
+      
+      // Criar conversa especial para este servidor
+      switchToPrivateChat(ipConnectionName);
+      
+      handleCloseModal();
+      
+      // Mostrar informações do servidor conectado
+      const serverInfo = connection.serverInfo;
+      alert([
+        `Conectado com sucesso ao servidor ${targetIP}!`,
+        ``,
+        `Informações do servidor:`,
+        `• Status: ${serverInfo.status}`,
+        `• Usuários online: ${serverInfo.clients || 0}`,
+        `• Conectado em: ${new Date().toLocaleTimeString()}`,
+        ``,
+        `Agora você pode conversar com usuários deste servidor!`
+      ].join('\n'));
+      
+    } catch (error) {
+      console.error(`[DIRECT CONNECTION] Erro ao conectar:`, error);
+      setConnectionError(`Não foi possível conectar a ${targetIP}:\n${error.message}`);
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
+  // Função para excluir conversa
+  const handleDeleteChat = (e, username, type) => {
+    e.stopPropagation(); // Evitar que o clique ative a conversa
+    
+    const confirmMessage = type === 'ip' 
+      ? `Deseja encerrar a conexão com o servidor ${username}?`
+      : `Deseja excluir a conversa com ${username}?`;
+    
+    if (window.confirm(confirmMessage)) {
+      deletePrivateChat(username, type);
+    }
   };
 
   // Função para determinar o status da conexão
@@ -140,67 +264,39 @@ const DrawerComponent = () => {
               height: "84%",
             }}
           >
-            <Button
-              className="Button Server"
-              sx={{
-                width: "100%",
-                height: "12%",
-                minWidth: 0,
-                minHeight: 0,
-                padding: 0,
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                borderRadius: 0,
-                "&:hover": {
-                  backgroundColor: "rgba(62, 29, 1, 0.1)",
-                },
-                "&:focus": {
-                  outline: "none",
-                },
-                "&:active": {
-                  outline: "none",
-                },
-                "&.Mui-focusVisible": {
-                  outline: "none",
-                },
-              }}
-            >
-              <DesktopWindowsOutlinedIcon
-                sx={{ color: "#3E1D01", fontSize: 30 }}
-              />
-            </Button>
-
-            <Button
-              className="Button add server"
-              sx={{
-                width: "100%",
-                height: "12%",
-                minWidth: 0,
-                minHeight: 0,
-                padding: 0,
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                borderRadius: 0,
-                "&:hover": {
-                  backgroundColor: "rgba(62, 29, 1, 0.1)",
-                },
-                "&:focus": {
-                  outline: "none",
-                },
-                "&:active": {
-                  outline: "none",
-                },
-                "&.Mui-focusVisible": {
-                  outline: "none",
-                },
-              }}
-            >
-              <AddCircleOutlineOutlinedIcon
-                sx={{ color: "#3E1D01", fontSize: 32 }}
-              />
-            </Button>
+            <Tooltip title="Conectar a outro servidor" arrow>
+              <Button
+                className="Button add server"
+                onClick={handleOpenModal}
+                sx={{
+                  width: "100%",
+                  height: "12%",
+                  minWidth: 0,
+                  minHeight: 0,
+                  padding: 0,
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  borderRadius: 0,
+                  "&:hover": {
+                    backgroundColor: "rgba(62, 29, 1, 0.1)",
+                  },
+                  "&:focus": {
+                    outline: "none",
+                  },
+                  "&:active": {
+                    outline: "none",
+                  },
+                  "&.Mui-focusVisible": {
+                    outline: "none",
+                  },
+                }}
+              >
+                <AddCircleOutlineOutlinedIcon
+                  sx={{ color: "#3E1D01", fontSize: 32 }}
+                />
+              </Button>
+            </Tooltip>
           </Box>
 
           {/* Botão de logout fixado no rodapé */}
@@ -237,6 +333,9 @@ const DrawerComponent = () => {
             </Button>
           
         </Box>
+
+
+
         {/* Right side */}
         <Box
           className="RightContainer"
@@ -408,89 +507,129 @@ const DrawerComponent = () => {
 
             {/* Lista de Conversas Privadas */}
             {privateChats.map((chat) => (
-              <Button
+              <Box
                 key={chat.username}
-                className="Chat Private"
-                onClick={() => switchToPrivateChat(chat.username)}
                 sx={{
-                  display: "flex",
-                  justifyContent: "flex-start",
-                  alignItems: "center",
-                  width: "98%",
-                  height: "12%",
-                  borderRadius: 3,
+                  position: 'relative',
+                  width: '98%',
                   marginBottom: 1,
-                  ...(currentView === chat.username && {
-                    border: "3px solid #3E1D01",
-                    bgcolor: "#987C5B",
-                  }),
-                  "&:hover": {
-                    border: "3px solid #3E1D01",
-                    bgcolor: "#987C5B",
-                  },
                 }}
               >
-                <Box
-                  className="Image Person"
+                <Button
+                  className="Chat Private"
+                  onClick={() => switchToPrivateChat(chat.username)}
                   sx={{
-                    width: "13%",
                     display: "flex",
-                    justifyContent: "center",
+                    justifyContent: "flex-start",
                     alignItems: "center",
-                    height: "100%",
+                    width: "100%",
+                    height: "12%",
+                    minHeight: '60px',
+                    borderRadius: 3,
+                    ...(currentView === chat.username && {
+                      border: "3px solid #3E1D01",
+                      bgcolor: "#987C5B",
+                    }),
+                    "&:hover": {
+                      border: "3px solid #3E1D01",
+                      bgcolor: "#987C5B",
+                    },
                   }}
                 >
-                  <Badge
-                    badgeContent={chat.messageCount}
-                    color="primary"
+                  <Box
+                    className="Image Person"
                     sx={{
-                      '& .MuiBadge-badge': {
-                        backgroundColor: '#ff9800',
-                        color: 'white',
-                        fontSize: '10px',
+                      width: "13%",
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      height: "100%",
+                    }}
+                  >
+                    <Badge
+                      badgeContent={chat.messageCount}
+                      color="primary"
+                      sx={{
+                        '& .MuiBadge-badge': {
+                          backgroundColor: '#ff9800',
+                          color: 'white',
+                          fontSize: '10px',
+                        },
+                      }}
+                    >
+                      {chat.type === 'ip' ? (
+                        <LanguageIcon
+                          sx={{ color: "#3E1D01", fontSize: 40 }}
+                        />
+                      ) : (
+                        <ChatIcon
+                          sx={{ color: "#3E1D01", fontSize: 40 }}
+                        />
+                      )}
+                    </Badge>
+                  </Box>
+
+                  <Box
+                    className="Info"
+                    sx={{
+                      width: "87%",
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "center",
+                      alignItems: "flex-start",
+                      height: "100%",
+                      paddingLeft: 1,
+                    }}
+                  >
+                    <Typography
+                      sx={{
+                        color: "#532C09",
+                        fontWeight: "bold",
+                        fontSize: "14px",
+                      }}
+                    >
+                      {chat.type === 'ip' ? `IP: ${chat.username}` : chat.username}
+                    </Typography>
+                    <Typography
+                      sx={{
+                        color: "#532C09",
+                        fontSize: "11px",
+                        opacity: 0.7,
+                      }}
+                    >
+                      {chat.type === 'ip' 
+                        ? `${chat.serverInfo?.connected ? 'Online' : 'Offline'} • ${chat.serverInfo?.users?.length || 0} usuários`
+                        : chat.lastMessage 
+                          ? (chat.lastMessage.message || chat.lastMessage.fileName || 'Arquivo').substring(0, 25) + '...' 
+                          : 'Nenhuma mensagem'
+                      }
+                    </Typography>
+                  </Box>
+                </Button>
+
+                {/* Botão de excluir */}
+                <Tooltip title={chat.type === 'ip' ? 'Encerrar conexão' : 'Excluir conversa'} arrow>
+                  <Button
+                    onClick={(e) => handleDeleteChat(e, chat.username, chat.type)}
+                    sx={{
+                      position: 'absolute',
+                      top: '5px',
+                      right: '5px',
+                      minWidth: '24px',
+                      width: '24px',
+                      height: '24px',
+                      borderRadius: '50%',
+                      backgroundColor: 'rgba(244, 67, 54, 0.1)',
+                      color: '#d32f2f',
+                      '&:hover': {
+                        backgroundColor: 'rgba(244, 67, 54, 0.2)',
                       },
                     }}
                   >
-                    <ChatIcon
-                      sx={{ color: "#3E1D01", fontSize: 40 }}
-                    />
-                  </Badge>
-                </Box>
-
-                <Box
-                  className="Info"
-                  sx={{
-                    width: "87%",
-                    display: "flex",
-                    flexDirection: "column",
-                    justifyContent: "center",
-                    alignItems: "flex-start",
-                    height: "100%",
-                    paddingLeft: 1,
-                  }}
-                >
-                  <Typography
-                    sx={{
-                      color: "#532C09",
-                      fontWeight: "bold",
-                      fontSize: "14px",
-                    }}
-                  >
-                    {chat.username}
-                  </Typography>
-                  <Typography
-                    sx={{
-                      color: "#532C09",
-                      fontSize: "11px",
-                      opacity: 0.7,
-                    }}
-                  >
-                    {chat.lastMessage ? 
-                      (chat.lastMessage.message || chat.lastMessage.fileName || 'Arquivo').substring(0, 25) + '...' 
-                      : 'Nenhuma mensagem'}
-                  </Typography>
-                </Box>
-              </Button>
+                    <DeleteIcon sx={{ fontSize: 14 }} />
+                  </Button>
+                </Tooltip>
+              </Box>
             ))}
           </Box>
 
@@ -685,6 +824,112 @@ const DrawerComponent = () => {
           </Box>
         </Box>
       </MuiDrawer>
+
+      {/* Modal para conectar a outro servidor por IP */}
+      <Dialog 
+        open={isModalOpen} 
+        onClose={handleCloseModal}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle 
+          sx={{ 
+            backgroundColor: '#F8E6D2',
+            color: '#3E1D01',
+            fontWeight: 'bold',
+            textAlign: 'center'
+          }}
+        >
+          Conectar a Outro Servidor
+        </DialogTitle>
+        
+        <DialogContent sx={{ backgroundColor: '#F8E6D2', paddingTop: 2 }}>
+          <Typography 
+            variant="body2" 
+            sx={{ 
+              color: '#3E1D01', 
+              marginBottom: 2,
+              textAlign: 'center'
+            }}
+          >
+            Digite o IP do servidor ao qual deseja se conectar:
+          </Typography>
+          
+          <TextField
+            fullWidth
+            label="IP do Servidor"
+            placeholder="192.168.1.100 ou localhost"
+            value={targetIP}
+            onChange={(e) => setTargetIP(e.target.value)}
+            disabled={isConnecting}
+            sx={{
+              marginBottom: 2,
+              '& .MuiOutlinedInput-root': {
+                backgroundColor: 'white',
+              }
+            }}
+          />
+
+          {connectionError && (
+            <Alert 
+              severity="error" 
+              sx={{ marginBottom: 2 }}
+            >
+              {connectionError}
+            </Alert>
+          )}
+
+          <Typography 
+            variant="body2" 
+            sx={{ 
+              color: '#666', 
+              fontSize: '0.8rem',
+              textAlign: 'center'
+            }}
+          >
+          </Typography>
+        </DialogContent>
+        
+        <DialogActions 
+          sx={{ 
+            backgroundColor: '#F8E6D2',
+            justifyContent: 'space-between',
+            padding: 2
+          }}
+        >
+          <Button 
+            onClick={handleCloseModal}
+            disabled={isConnecting}
+            sx={{ color: '#3E1D01' }}
+          >
+            Cancelar
+          </Button>
+          
+          <Button 
+            onClick={handleConnectToIP}
+            disabled={isConnecting || !targetIP.trim()}
+            variant="contained"
+            sx={{
+              backgroundColor: '#3E1D01',
+              '&:hover': {
+                backgroundColor: '#2A1401',
+              },
+              '&:disabled': {
+                backgroundColor: '#cccccc',
+              }
+            }}
+          >
+            {isConnecting ? (
+              <>
+                <CircularProgress size={20} sx={{ marginRight: 1, color: 'white' }} />
+                Conectando...
+              </>
+            ) : (
+              'Conectar'
+            )}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

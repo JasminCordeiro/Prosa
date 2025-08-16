@@ -348,7 +348,7 @@ const LoginForm = () => {
               {loading ? (
                 <CircularProgress size={24} color="inherit" />
               ) : (
-                "Entrar"
+                "Conectar"
               )}
             </Button>
           </Box>

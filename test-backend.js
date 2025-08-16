@@ -12,10 +12,10 @@ async function testHttpAPI() {
         const response = await fetch('http://localhost:3001/api/status');
         if (response.ok) {
             const data = await response.json();
-            console.log('✅ API HTTP funcionando:', data);
+            console.log('API HTTP funcionando:', data);
             return true;
         } else {
-            console.log('❌ API HTTP com problema. Status:', response.status);
+            console.log('API HTTP com problema. Status:', response.status);
             return false;
         }
     } catch (error) {
@@ -99,7 +99,7 @@ async function runTests() {
     
     if (!httpWorking) {
         console.log('\n❌ Backend não está respondendo na porta 3001');
-        console.log('💡 Certifique-se de que executou: cd Prosa/Application && npm run dev');
+        console.log('Certifique-se de que executou: cd Prosa/Application && npm run dev');
         return;
     }
 

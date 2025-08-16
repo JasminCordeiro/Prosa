@@ -1,4 +1,5 @@
 import io from 'socket.io-client';
+import NetworkConfig from '../config/network.js';
 
 class SocketService {
   constructor() {
@@ -11,13 +12,19 @@ class SocketService {
   }
 
   // Conectar ao servidor
-  connect(serverUrl = 'http://localhost:3001') {
+  connect(serverUrl = null) {
     if (this.socket && this.connected) {
       console.warn('Socket já está conectado');
       return;
     }
 
-    this.socket = io(serverUrl, {
+    // Usar configuração automática se nenhuma URL for fornecida
+    const targetUrl = serverUrl || NetworkConfig.getServerUrl();
+    
+    console.log(`[NETWORK] Conectando ao servidor: ${targetUrl}`);
+    console.log(`[NETWORK] Hostname atual: ${window.location.hostname}`);
+
+    this.socket = io(targetUrl, {
       transports: ['websocket', 'polling'],
       forceNew: true
     });
@@ -68,12 +75,14 @@ class SocketService {
     });
 
     this.socket.on('private-message', (message) => {
-      console.log('Mensagem privada recebida:', message);
+      console.log(`[FRONTEND] Mensagem privada recebida de ${message.sender}:`, message);
+      console.log(`[FRONTEND] Servidor encontrou com sucesso o remetente e entregou a mensagem`);
       this.emitToCallbacks('private-message', message);
     });
 
     this.socket.on('private-message-sent', (message) => {
-      console.log('Mensagem privada enviada:', message);
+      console.log(`[FRONTEND] Confirmação: Mensagem privada enviada para ${message.target}:`, message);
+      console.log(`[FRONTEND] Servidor localizou destinatário com sucesso e entregou a mensagem`);
       this.emitToCallbacks('private-message-sent', message);
     });
 
@@ -127,6 +136,17 @@ class SocketService {
         userExists: !!this.user
       });
       throw new Error('Usuário não está conectado ou registrado');
+    }
+
+    // Verificar se é mensagem privada e logar busca de IP
+    if (message.startsWith('@')) {
+      const spaceIndex = message.indexOf(' ');
+      if (spaceIndex !== -1) {
+        const targetUsername = message.slice(1, spaceIndex).trim();
+        console.log(`[FRONTEND] Enviando mensagem privada para: ${targetUsername}`);
+        console.log(`[FRONTEND] Servidor irá buscar IP de '${targetUsername}' antes de entregar a mensagem`);
+        console.log(`[FRONTEND] Aguardando servidor localizar destinatário...`);
+      }
     }
 
     console.log('Enviando mensagem:', { message, type, user: this.user });
@@ -226,7 +246,8 @@ class SocketService {
   // Verificar status do servidor
   async checkServerStatus() {
     try {
-      const response = await fetch('http://localhost:3001/api/status');
+      const serverUrl = NetworkConfig.getServerUrl();
+      const response = await fetch(`${serverUrl}/api/status`);
       const data = await response.json();
       return data;
     } catch (error) {
@@ -238,7 +259,8 @@ class SocketService {
   // Obter lista de usuários
   async getUsers() {
     try {
-      const response = await fetch('http://localhost:3001/api/users');
+      const serverUrl = NetworkConfig.getServerUrl();
+      const response = await fetch(`${serverUrl}/api/users`);
       const data = await response.json();
       return data;
     } catch (error) {
