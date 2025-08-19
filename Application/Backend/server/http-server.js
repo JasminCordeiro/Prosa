@@ -67,6 +67,59 @@ class HttpServerManager {
             }))
             res.json(users)
         })
+
+        // Endpoint para debug de IPs
+        this.app.get('/api/debug/ips', (req, res) => {
+            const clients = Array.from(this.clients.values());
+            const ips = [...new Set(clients.map(c => c.ip))];
+            
+            console.log(`[API DEBUG] Endpoint /api/debug/ips chamado`);
+            console.log(`[API DEBUG] Clientes encontrados: ${clients.length}`);
+            clients.forEach((c, i) => {
+                console.log(`[API DEBUG] Cliente ${i+1}: ${c.name} (${c.ip})`);
+            });
+            
+            res.json({
+                totalClients: clients.length,
+                uniqueIPs: ips,
+                clientDetails: clients.map(c => ({
+                    name: c.name,
+                    ip: c.ip,
+                    id: c.id,
+                    connected: true,
+                    lastSeen: new Date().toISOString()
+                }))
+            })
+        })
+
+        // Endpoint para limpar e recriar cache de clientes
+        this.app.post('/api/debug/refresh-clients', (req, res) => {
+            console.log(`[API DEBUG] Forçando refresh de clientes...`);
+            
+            // Verificar e remover clientes desconectados
+            const disconnectedClients = [];
+            for (const [socketId, client] of this.clients.entries()) {
+                if (!client.socket || client.socket.disconnected) {
+                    this.clients.delete(socketId);
+                    disconnectedClients.push(client.name);
+                }
+            }
+            
+            const remainingClients = Array.from(this.clients.values());
+            
+            console.log(`[API DEBUG] Clientes removidos: ${disconnectedClients.length}`);
+            console.log(`[API DEBUG] Clientes restantes: ${remainingClients.length}`);
+            
+            res.json({
+                message: 'Cache de clientes atualizado',
+                removedClients: disconnectedClients,
+                remainingClients: remainingClients.map(c => ({
+                    name: c.name,
+                    ip: c.ip,
+                    id: c.id
+                }))
+            });
+        })
     }
 
     setupWebSocket() {
@@ -88,11 +141,47 @@ class HttpServerManager {
                     return
                 }
 
-                // Capturar IP do cliente
-                const clientIp = socket.handshake.headers['x-forwarded-for'] || 
-                               socket.handshake.address || 
-                               socket.conn.remoteAddress || 
-                               'localhost';
+                // Capturar IP do cliente com múltiplas fontes e resiliência
+                const xForwardedFor = socket.handshake.headers['x-forwarded-for'];
+                const handshakeAddress = socket.handshake.address;
+                const remoteAddress = socket.conn.remoteAddress;
+                const realIP = socket.handshake.headers['x-real-ip'];
+                const clientIP = socket.handshake.headers['client-ip'];
+                
+                // Múltiplas tentativas de captura de IP
+                let capturedIPs = [
+                    xForwardedFor,
+                    realIP,
+                    clientIP,
+                    handshakeAddress,
+                    remoteAddress,
+                    'localhost'
+                ].filter(ip => ip != null);
+                
+                let clientIp = capturedIPs[0];
+                
+                // Log detalhado para debug
+                console.log(`[IP CAPTURE] === CAPTURA DE IP PARA ${username} ===`);
+                console.log(`[IP CAPTURE] x-forwarded-for: ${xForwardedFor}`);
+                console.log(`[IP CAPTURE] x-real-ip: ${realIP}`);
+                console.log(`[IP CAPTURE] client-ip: ${clientIP}`);
+                console.log(`[IP CAPTURE] handshake.address: ${handshakeAddress}`);
+                console.log(`[IP CAPTURE] conn.remoteAddress: ${remoteAddress}`);
+                console.log(`[IP CAPTURE] IPs capturados: [${capturedIPs.join(', ')}]`);
+                console.log(`[IP CAPTURE] IP escolhido: ${clientIp}`);
+                
+                // Normalizar IPv6 localhost para IPv4 e limpar IPs
+                if (clientIp === '::1' || clientIp === '::ffff:127.0.0.1') {
+                    clientIp = '127.0.0.1';
+                } else if (clientIp && clientIp.includes(',')) {
+                    // Se vier múltiplos IPs separados por vírgula, pegar o primeiro
+                    clientIp = clientIp.split(',')[0].trim();
+                } else if (clientIp && clientIp.includes('::ffff:')) {
+                    // Remover prefixo IPv6-mapped IPv4
+                    clientIp = clientIp.replace('::ffff:', '');
+                }
+                
+                console.log(`[IP CAPTURE] IP final normalizado: ${clientIp}`);
 
                 // Registrar o cliente
                 const client = {
@@ -142,8 +231,11 @@ class HttpServerManager {
                 }
 
                 const { message, type = 'text' } = messageData
-
                 // Verificar se é mensagem privada
+                console.log(`[WEBSOCKET] === PROCESSANDO MENSAGEM ===`);
+                console.log(`[WEBSOCKET] Mensagem recebida: '${message}'`);
+                console.log(`[WEBSOCKET] Verifica se inicia com @: ${message.startsWith('@')}`);
+                
                 if (message.startsWith('@')) {
                     const spaceIndex = message.indexOf(' ')
                     if (spaceIndex === -1) {
@@ -151,51 +243,207 @@ class HttpServerManager {
                         return
                     }
                     
-                    const targetUsername = message.slice(1, spaceIndex).trim()
+                    const target = message.slice(1, spaceIndex).trim()
                     const privateMessage = message.slice(spaceIndex + 1).trim()
                     
-                    console.log(`[WEBSOCKET] Iniciando busca de IP para usuário: ${targetUsername}`)
-                    console.log(`[WEBSOCKET] Procurando usuário '${targetUsername}' na lista de ${this.clients.size} clientes conectados...`)
+                    // Verificar se é um IP (formato xxx.xxx.xxx.xxx ou localhost)
+                    console.log(`[IP VALIDATION] === VALIDAÇÃO DE IP ===`);
+               
+                    // Regex mais flexível e detalhada
+                    const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$|^localhost$|^127\.0\.0\.1$/;
                     
-                    // Encontrar o usuário alvo
-                    const targetClient = Array.from(this.clients.values())
-                        .find(c => c.name === targetUsername)
+                    // Teste de regex detalhado
+                    const isIP = ipRegex.test(target);
                     
-                    if (!targetClient) {
-                        console.log(`[WEBSOCKET] Usuário '${targetUsername}' não encontrado na lista de clientes`)
-                        const availableUsers = Array.from(this.clients.values()).map(c => c.name)
-                        console.log(`[WEBSOCKET] Usuários disponíveis: ${availableUsers.join(', ')}`)
-                        socket.emit('error', { 
-                            message: `Usuário '${targetUsername}' não encontrado` 
+                    // Se o padrão IPv4 bate mas a regex completa não, usar validação mais simples
+                    const finalIsIP = isIP || isIPv4Pattern;
+                    
+                    if (finalIsIP) {
+                        console.log(`[WEBSOCKET] Mensagem direcionada para IP: ${target}`)
+                        console.log(`[WEBSOCKET] Validando se existe usuário vinculado ao IP '${target}'...`)
+                        
+                        // Normalizar IP de busca
+                        let normalizedTarget = target;
+                        if (target === 'localhost') {
+                            normalizedTarget = '127.0.0.1';
+                        }
+                        
+                        // Log de todos os clientes para debug detalhado
+                        const allClients = Array.from(this.clients.values());
+                        console.log(`[IP DEBUG] === BUSCA DETALHADA POR IP ===`);
+                        console.log(`[IP DEBUG] IP solicitado: '${target}'`);
+                        console.log(`[IP DEBUG] IP normalizado: '${normalizedTarget}'`);
+                        console.log(`[IP DEBUG] Total de clientes conectados: ${allClients.length}`);
+                        
+                        allClients.forEach((c, index) => {
+                            // Normalizar IP do cliente para comparação
+                            let clientIP = c.ip;
+                            if (clientIP === '::1' || clientIP === '::ffff:127.0.0.1') {
+                                clientIP = '127.0.0.1';
+                            }
+                            
+                            const isExactMatch = clientIP === normalizedTarget;
+                            const isLocalhostMatch = (normalizedTarget === '127.0.0.1' && (clientIP === 'localhost' || clientIP.includes('127.0.0.1')));
+                            const isTargetLocalhostMatch = (target === 'localhost' && (clientIP === '127.0.0.1' || clientIP === 'localhost'));
+                            const isAnyMatch = isExactMatch || isLocalhostMatch || isTargetLocalhostMatch;
+                            
+                            console.log(`[IP DEBUG] Cliente ${index + 1}:`);
+                            console.log(`  └─ Nome: ${c.name}`);
+                            console.log(`  └─ IP original: '${c.ip}'`);
+                            console.log(`  └─ IP normalizado: '${clientIP}'`);
+                            console.log(`  └─ Match exato: ${isExactMatch}`);
+                            console.log(`  └─ Match localhost: ${isLocalhostMatch}`);
+                            console.log(`  └─ Match target localhost: ${isTargetLocalhostMatch}`);
+                            console.log(`  └─ RESULTADO: ${isAnyMatch ? 'ENCONTRADO!' : 'não encontrado'}`);
+                        });
+                        
+                        // Implementar busca mais robusta com múltiplos fallbacks
+                        let targetClient = null;
+                        
+                        // 1º Tentativa: Busca exata
+                        targetClient = allClients.find(c => {
+                            let clientIP = c.ip;
+                            if (clientIP === '::1' || clientIP === '::ffff:127.0.0.1') {
+                                clientIP = '127.0.0.1';
+                            }
+                            return clientIP === normalizedTarget;
+                        });
+                        
+                        console.log(`[IP DEBUG] 1ª Tentativa (busca exata): ${targetClient ? `SUCESSO - ${targetClient.name}` : 'FALHOU'}`);
+                        
+                        // 2º Tentativa: Busca com variações de localhost
+                        if (!targetClient && (normalizedTarget === '127.0.0.1' || target === 'localhost')) {
+                            targetClient = allClients.find(c => {
+                                const clientIP = c.ip;
+                                return clientIP === 'localhost' || 
+                                       clientIP === '127.0.0.1' || 
+                                       clientIP === '::1' || 
+                                       clientIP === '::ffff:127.0.0.1' ||
+                                       clientIP.includes('127.0.0.1');
+                            });
+                            console.log(`[IP DEBUG] 2ª Tentativa (localhost variations): ${targetClient ? `SUCESSO - ${targetClient.name}` : 'FALHOU'}`);
+                        }
+                        
+                        // 3º Tentativa: Busca flexível (contém o IP)
+                        if (!targetClient) {
+                            targetClient = allClients.find(c => {
+                                return c.ip.includes(normalizedTarget) || normalizedTarget.includes(c.ip);
+                            });
+                            console.log(`[IP DEBUG] 3ª Tentativa (busca flexível): ${targetClient ? `SUCESSO - ${targetClient.name}` : 'FALHOU'}`);
+                        }
+                        
+                        // 4º Tentativa: Se for um IP privado, tentar variações de rede local
+                        if (!targetClient && normalizedTarget.startsWith('192.168.')) {
+                            const targetNetwork = normalizedTarget.split('.').slice(0, 3).join('.');
+                            targetClient = allClients.find(c => {
+                                return c.ip.startsWith(targetNetwork);
+                            });
+                            console.log(`[IP DEBUG] 4ª Tentativa (mesma rede ${targetNetwork}.*): ${targetClient ? `SUCESSO - ${targetClient.name}` : 'FALHOU'}`);
+                        }
+                        
+                        console.log(`[IP DEBUG] === RESULTADO FINAL ===`);
+                        if (targetClient) {
+                            console.log(`[IP DEBUG] CLIENTE ENCONTRADO: ${targetClient.name} (${targetClient.ip})`);
+                        } else {
+                            console.log(`[IP DEBUG] NENHUM CLIENTE ENCONTRADO PARA IP: ${target}`);
+                        }
+                        
+                        if (!targetClient) {
+                            console.log(`[WEBSOCKET] Nenhum cliente encontrado no IP '${target}'`)
+                            const availableClients = allClients.map(c => `${c.name} (${c.ip})`);
+                            const availableIPs = [...new Set(allClients.map(c => c.ip))];
+                            console.log(`[WEBSOCKET] Clientes disponíveis: ${availableClients.join(', ')}`)
+                            
+                            let errorMessage = `Nenhum cliente conectado no IP '${target}'.`;
+                            if (availableClients.length > 0) {
+                                errorMessage += `\n\nClientes conectados:\n${availableClients.join('\n')}`;
+                            } else {
+                                errorMessage += '\n\nNenhum cliente conectado no momento.';
+                            }
+                            
+                            socket.emit('error', { 
+                                message: errorMessage
+                            })
+                            return
+                        }
+
+                        console.log(`[WEBSOCKET] Usuário encontrado no IP ${target}: ${targetClient.name}`)
+                        console.log(`[WEBSOCKET] Enviando mensagem privada de ${client.name} (${client.ip}) para ${targetClient.name} (${targetClient.ip})`)
+
+                        // Enviar mensagem privada (mesmo fluxo das conversas privadas normais)
+                        const privateMsg = {
+                            id: Date.now(),
+                            message: privateMessage,
+                            sender: client.name,
+                            senderId: client.id,
+                            type: 'private',
+                            timestamp: new Date().toISOString(),
+                            target: targetClient.namex, // SEMPRE usar o nome real do usuário
+                            isIPMessage: true,
+                            targetIP: client.ip, // IP do remetente
+                            resolvedFromIP: target, // IP que foi usado para encontrar o usuário
+                            targetUserIP: targetClient.ip // IP do destinatário
+                        }
+
+                        // Enviar para o usuário específico encontrado no IP
+                        targetClient.socket.emit('private-message', privateMsg)
+                        
+                        // Confirmar para o remetente
+                        socket.emit('private-message-sent', {
+                            ...privateMsg,
+                            message: privateMessage,
+                            target: targetClient.name, // SEMPRE retornar o nome real do usuário
+                            resolvedFromIP: target, // Incluir info de que veio de busca por IP
+                            unifyWith: targetClient.name // Indicar com qual conversa deve unificar
                         })
-                        return
+
+                        console.log(`[WEBSOCKET] Mensagem IP entregue para ${targetClient.name} no IP ${target}`)
+                        
+                    } else {
+                        // Busca por nome de usuário (lógica original)
+                        console.log(`[WEBSOCKET] Iniciando busca de usuário: ${target}`)
+                        console.log(`[WEBSOCKET] Procurando usuário '${target}' na lista de ${this.clients.size} clientes conectados...`)
+                        
+                        // Encontrar o usuário alvo
+                        const targetClient = Array.from(this.clients.values())
+                            .find(c => c.name === target)
+                        
+                        if (!targetClient) {
+                            console.log(`[WEBSOCKET] Usuário '${target}' não encontrado na lista de clientes`)
+                            const availableUsers = Array.from(this.clients.values()).map(c => c.name)
+                            console.log(`[WEBSOCKET] Usuários disponíveis: ${availableUsers.join(', ')}`)
+                            socket.emit('error', { 
+                                message: `Usuário '${target}' não encontrado` 
+                            })
+                            return
+                        }
+
+                        console.log(`[WEBSOCKET] Usuário encontrado: ${targetClient.name} | IP: ${targetClient.ip}`)
+                        console.log(`[WEBSOCKET] Enviando mensagem privada de ${client.name} (${client.ip}) para ${targetClient.name} (${targetClient.ip})`)
+
+                        // Enviar mensagem privada
+                        const privateMsg = {
+                            id: Date.now(),
+                            message: privateMessage,
+                            sender: client.name,
+                            senderId: client.id,
+                            type: 'private',
+                            timestamp: new Date().toISOString(),
+                            target: target
+                        }
+
+                        // Enviar para o destinatário
+                        targetClient.socket.emit('private-message', privateMsg)
+                        
+                        // Confirmar para o remetente
+                        socket.emit('private-message-sent', {
+                            ...privateMsg,
+                            message: privateMessage,
+                            target: target
+                        })
+
+                        console.log(`[WEBSOCKET] Mensagem privada entregue com sucesso`)
                     }
-
-                    console.log(`[WEBSOCKET] Usuário encontrado: ${targetClient.name} | IP: ${targetClient.ip}`)
-                    console.log(`[WEBSOCKET] Enviando mensagem privada de ${client.name} (${client.ip}) para ${targetClient.name} (${targetClient.ip})`)
-
-                    // Enviar mensagem privada
-                    const privateMsg = {
-                        id: Date.now(),
-                        message: privateMessage,
-                        sender: client.name,
-                        senderId: client.id,
-                        type: 'private',
-                        timestamp: new Date().toISOString(),
-                        target: targetUsername
-                    }
-
-                    // Enviar para o destinatário
-                    targetClient.socket.emit('private-message', privateMsg)
-                    
-                    // Confirmar para o remetente
-                    socket.emit('private-message-sent', {
-                        ...privateMsg,
-                        message: privateMessage,
-                        target: targetUsername
-                    })
-
-                    console.log(`[WEBSOCKET] Mensagem privada entregue com sucesso`)
 
                 } else {
                     // Mensagem pública

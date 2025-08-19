@@ -60,7 +60,15 @@ const Chat = () => {
         
         // Se estiver em conversa privada e não começar com @, adicionar automaticamente
         if (currentView !== 'general' && !messageToSend.startsWith('@')) {
-          messageToSend = `@${currentView} ${messageToSend}`;
+          // Para conversas IP, extrair o IP do nome da conversa
+          if (currentView.startsWith('IP: ')) {
+            const targetIP = currentView.replace('IP: ', '');
+            console.log(`[IP CHAT] Enviando mensagem para IP: @${targetIP} ${messageToSend}`);
+            messageToSend = `@${targetIP} ${messageToSend}`;
+          } else {
+            // Para conversas privadas normais
+            messageToSend = `@${currentView} ${messageToSend}`;
+          }
         }
         
         sendMessage(messageToSend);
@@ -447,8 +455,10 @@ const Chat = () => {
               className="keyboard input"
               placeholder={connected ? 
                 (currentView === 'general' 
-                  ? "Digite sua mensagem... (use @usuario para mensagem privada)" 
-                  : `Mensagem para ${currentView}...`
+                  ? "Digite sua mensagem... (use @usuario ou @IP para mensagem privada)" 
+                  : currentView.startsWith('IP: ')
+                    ? `Digite sua mensagem (será enviada automaticamente para ${currentView.replace('IP: ', '')})...`
+                    : `Mensagem para ${currentView}...`
                 ) : "Desconectado..."}
               variant="standard"
               value={message}

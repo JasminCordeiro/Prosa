@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import socketService from '../services/socketService';
 import userCacheService from '../services/userCacheService';
-import directConnectionService from '../services/directConnectionService';
+
 
 const SocketContext = createContext();
 
@@ -137,24 +137,14 @@ export const SocketProvider = ({ children }) => {
 
   // Obter conversas privadas com contadores de mensagens não lidas
   const getPrivateChats = useCallback(() => {
-    const regularChats = Object.keys(privateConversations).map(username => ({
-      username,
-      messageCount: privateConversations[username].length,
-      lastMessage: privateConversations[username][privateConversations[username].length - 1],
-      type: 'regular'
-    }));
-
-    // Adicionar conversas de IP direto
-    const directConnections = directConnectionService?.getConnectedServers() || [];
-    const ipChats = directConnections.map(serverIP => ({
-      username: serverIP,
-      messageCount: 0, // Por enquanto, sem contador para IP
-      lastMessage: null,
-      type: 'ip',
-      serverInfo: directConnectionService?.getServerInfo(serverIP)
-    }));
-
-    return [...regularChats, ...ipChats];
+    return Object.keys(privateConversations)
+      .filter(username => !username.startsWith('IP: ')) // Filtrar conversas IP
+      .map(username => ({
+        username,
+        messageCount: privateConversations[username].length,
+        lastMessage: privateConversations[username][privateConversations[username].length - 1],
+        type: 'regular'
+      }));
   }, [privateConversations]);
 
   // Funções para gerenciar cache
@@ -212,15 +202,19 @@ export const SocketProvider = ({ children }) => {
       
       console.log(`Conversa privada com ${username} excluída`);
     } else if (type === 'ip') {
-      // Desconectar do servidor IP
-      directConnectionService.disconnectFromServer(username);
+      // Remover conversa IP (não há conexão direta para desconectar)
+      setPrivateConversations(prev => {
+        const updated = { ...prev };
+        delete updated[username];
+        return updated;
+      });
       
       // Se estava vendo esta conversa, voltar para o grupo geral
       if (currentView === username) {
         setCurrentView('general');
       }
       
-      console.log(`Conexão direta com servidor ${username} encerrada`);
+      console.log(`Conversa IP com ${username} removida`);
     }
   }, [currentView]);
 
@@ -291,11 +285,15 @@ export const SocketProvider = ({ children }) => {
 
     // Callback para mensagem privada recebida
     const onPrivateMessage = (message) => {
-      const senderName = message.sender;
+      // SEMPRE usar o nome real do usuário como chave da conversa
+      const conversationKey = message.sender;
+      
+      console.log(`[CONVERSATION] Mensagem recebida de: ${message.sender}`);
+      
       setPrivateConversations(prev => ({
         ...prev,
-        [senderName]: [
-          ...(prev[senderName] || []),
+        [conversationKey]: [
+          ...(prev[conversationKey] || []),
           {
             ...message,
             id: message.id || Date.now(),
@@ -308,11 +306,15 @@ export const SocketProvider = ({ children }) => {
 
     // Callback para confirmação de mensagem privada enviada
     const onPrivateMessageSent = (message) => {
-      const targetName = message.target;
+      // SEMPRE usar o nome real do usuário como chave (vem do backend)
+      const conversationKey = message.target; // Backend já retorna o nome real
+      
+      console.log(`[CONVERSATION] Mensagem enviada para: ${message.target}`);
+      
       setPrivateConversations(prev => ({
         ...prev,
-        [targetName]: [
-          ...(prev[targetName] || []),
+        [conversationKey]: [
+          ...(prev[conversationKey] || []),
           {
             ...message,
             id: message.id || Date.now(),
@@ -347,6 +349,23 @@ export const SocketProvider = ({ children }) => {
 
     // Callback para erro
     const onError = (data) => {
+      console.log(`[ERROR] Erro recebido do servidor:`, data);
+      
+      // Se for erro de usuário não encontrado por IP, tentar atualizar lista de usuários
+      if (data.message && data.message.includes('conectado no IP')) {
+        console.log(`[ERROR] Erro de IP detectado, tentando atualizar lista de usuários...`);
+        
+        // Aguardar um pouco e tentar novamente obter lista atualizada
+        setTimeout(async () => {
+          try {
+            await refreshUserList();
+            console.log(`[ERROR] Lista de usuários atualizada após erro de IP`);
+          } catch (err) {
+            console.error(`[ERROR] Falha ao atualizar lista:`, err);
+          }
+        }, 1000);
+      }
+      
       setError(data.message);
     };
 

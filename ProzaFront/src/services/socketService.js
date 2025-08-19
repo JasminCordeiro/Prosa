@@ -142,14 +142,27 @@ class SocketService {
     if (message.startsWith('@')) {
       const spaceIndex = message.indexOf(' ');
       if (spaceIndex !== -1) {
-        const targetUsername = message.slice(1, spaceIndex).trim();
-        console.log(`[FRONTEND] Enviando mensagem privada para: ${targetUsername}`);
-        console.log(`[FRONTEND] Servidor irá buscar IP de '${targetUsername}' antes de entregar a mensagem`);
-        console.log(`[FRONTEND] Aguardando servidor localizar destinatário...`);
+        const target = message.slice(1, spaceIndex).trim();
+        const messageContent = message.slice(spaceIndex + 1).trim();
+        
+        console.log(`[FRONTEND] === ENVIANDO MENSAGEM PRIVADA ===`);
+        console.log(`[FRONTEND] Target: '${target}'`);
+        console.log(`[FRONTEND] Mensagem: '${messageContent}'`);
+        console.log(`[FRONTEND] Mensagem completa: '${message}'`);
+        
+        // Verificar se parece ser um IP
+        const isIPPattern = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(target);
+        console.log(`[FRONTEND] Target parece ser IP: ${isIPPattern}`);
+        
+        if (isIPPattern) {
+          console.log(`[FRONTEND] 🌐 Enviando mensagem via IP para: ${target}`);
+        } else {
+          console.log(`[FRONTEND] 👤 Enviando mensagem para usuário: ${target}`);
+        }
       }
     }
 
-    console.log('Enviando mensagem:', { message, type, user: this.user });
+    console.log('Enviando mensagem via WebSocket:', { message, type, user: this.user });
     this.socket.emit('send-message', { message, type });
   }
 

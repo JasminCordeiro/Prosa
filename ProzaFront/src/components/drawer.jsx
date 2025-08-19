@@ -5,13 +5,7 @@ import {
   Button, 
   Typography, 
   Badge,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Alert,
-  CircularProgress 
+ 
 } from "@mui/material";
 import MuiDrawer from "@mui/material/Drawer";
 import LogoutIcon from "@mui/icons-material/Logout";
@@ -23,7 +17,7 @@ import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined
 import DesktopWindowsOutlinedIcon from "@mui/icons-material/DesktopWindowsOutlined";
 import GroupIcon from "@mui/icons-material/Group";
 import ChatIcon from "@mui/icons-material/Chat";
-import AddCircleOutlineOutlinedIcon from "@mui/icons-material/AddCircleOutlineOutlined";
+
 import WifiOffIcon from "@mui/icons-material/WifiOff";
 import SignalWifiStatusbar4BarIcon from "@mui/icons-material/SignalWifiStatusbar4Bar";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -31,17 +25,14 @@ import LanguageIcon from "@mui/icons-material/Language";
 import { useSocket } from "../context/SocketContext";
 import { useNavigate } from "react-router-dom";
 import { Tooltip } from "@mui/material";
-import directConnectionService from "../services/directConnectionService";
+
 
 export const drawerWidth = 500;
 
 const DrawerComponent = () => {
   const [isClicked, setIsClicked] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [targetIP, setTargetIP] = useState('');
-  const [connectionError, setConnectionError] = useState('');
-  const [isConnecting, setIsConnecting] = useState(false);
-  const [connectedServers, setConnectedServers] = useState([]);
+
+
   const navigate = useNavigate();
   
   const { 
@@ -60,100 +51,14 @@ const DrawerComponent = () => {
 
   const privateChats = getPrivateChats();
 
-  // Monitorar conexões diretas
-  React.useEffect(() => {
-    const updateConnectedServers = () => {
-      const servers = directConnectionService.getConnectedServers();
-      setConnectedServers(servers);
-    };
 
-    // Atualizar inicialmente
-    updateConnectedServers();
-
-    // Configurar um intervalo para verificar conexões
-    const interval = setInterval(updateConnectedServers, 2000);
-
-    return () => clearInterval(interval);
-  }, []);
 
   const handleLogout = () => {
     disconnect();
     navigate("/");
   };
 
-  // Funções para gerenciar conexão por IP
-  const handleOpenModal = () => {
-    setIsModalOpen(true);
-    setTargetIP('');
-    setConnectionError('');
-  };
 
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setTargetIP('');
-    setConnectionError('');
-    setIsConnecting(false);
-  };
-
-  const handleConnectToIP = async () => {
-    if (!targetIP.trim()) {
-      setConnectionError('Digite um IP válido');
-      return;
-    }
-
-    // Validação básica de IP
-    const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$|^localhost$/;
-    if (!ipRegex.test(targetIP.trim())) {
-      setConnectionError('Formato de IP inválido. Use formato: 192.168.1.100 ou localhost');
-      return;
-    }
-
-    setIsConnecting(true);
-    setConnectionError('');
-
-    try {
-      console.log(`[DIRECT CONNECTION] Tentando conectar ao IP: ${targetIP}`);
-      
-      // Usar o serviço de conexão direta
-      const connection = await directConnectionService.connectToServer(targetIP.trim());
-      
-      console.log(`[DIRECT CONNECTION] Conectado com sucesso:`, connection);
-
-      // Registrar o usuário atual no servidor remoto (se estiver logado)
-      if (user && user.name) {
-        console.log(`[DIRECT CONNECTION] Registrando usuário ${user.name} no servidor ${targetIP}`);
-        directConnectionService.registerOnServer(targetIP.trim(), user.name);
-      }
-
-      // Criar uma nova aba/conversa para este IP
-      const ipConnectionName = `${targetIP}`;
-      console.log(`[DIRECT CONNECTION] Iniciando conversa com: ${ipConnectionName}`);
-      
-      // Criar conversa especial para este servidor
-      switchToPrivateChat(ipConnectionName);
-      
-      handleCloseModal();
-      
-      // Mostrar informações do servidor conectado
-      const serverInfo = connection.serverInfo;
-      alert([
-        `Conectado com sucesso ao servidor ${targetIP}!`,
-        ``,
-        `Informações do servidor:`,
-        `• Status: ${serverInfo.status}`,
-        `• Usuários online: ${serverInfo.clients || 0}`,
-        `• Conectado em: ${new Date().toLocaleTimeString()}`,
-        ``,
-        `Agora você pode conversar com usuários deste servidor!`
-      ].join('\n'));
-      
-    } catch (error) {
-      console.error(`[DIRECT CONNECTION] Erro ao conectar:`, error);
-      setConnectionError(`Não foi possível conectar a ${targetIP}:\n${error.message}`);
-    } finally {
-      setIsConnecting(false);
-    }
-  };
 
   // Função para excluir conversa
   const handleDeleteChat = (e, username, type) => {
@@ -253,51 +158,8 @@ const DrawerComponent = () => {
             />
           </Box>
 
-          <Box
-            className="Servers+"
-            sx={{
-              width: "100%",
-              display: "flex",
-              justifyContent: "flex-start",
-              alignItems: "center",
-              flexDirection: "column",
-              height: "84%",
-            }}
-          >
-            <Tooltip title="Conectar a outro servidor" arrow>
-              <Button
-                className="Button add server"
-                onClick={handleOpenModal}
-                sx={{
-                  width: "100%",
-                  height: "12%",
-                  minWidth: 0,
-                  minHeight: 0,
-                  padding: 0,
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  borderRadius: 0,
-                  "&:hover": {
-                    backgroundColor: "rgba(62, 29, 1, 0.1)",
-                  },
-                  "&:focus": {
-                    outline: "none",
-                  },
-                  "&:active": {
-                    outline: "none",
-                  },
-                  "&.Mui-focusVisible": {
-                    outline: "none",
-                  },
-                }}
-              >
-                <AddCircleOutlineOutlinedIcon
-                  sx={{ color: "#3E1D01", fontSize: 32 }}
-                />
-              </Button>
-            </Tooltip>
-          </Box>
+          {/* Spacer para empurrar o botão de logout para baixo */}
+          <Box sx={{ flexGrow: 1 }} />
 
           {/* Botão de logout fixado no rodapé */}
           <Button
@@ -312,6 +174,7 @@ const DrawerComponent = () => {
                 display: "flex",
                 justifyContent: "center",
                 alignItems: "center",
+                marginBottom: 0,
                 "&:hover": {
                   backgroundColor: "rgba(62, 29, 1, 0.1)",
                 },
@@ -825,111 +688,7 @@ const DrawerComponent = () => {
         </Box>
       </MuiDrawer>
 
-      {/* Modal para conectar a outro servidor por IP */}
-      <Dialog 
-        open={isModalOpen} 
-        onClose={handleCloseModal}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle 
-          sx={{ 
-            backgroundColor: '#F8E6D2',
-            color: '#3E1D01',
-            fontWeight: 'bold',
-            textAlign: 'center'
-          }}
-        >
-          Conectar a Outro Servidor
-        </DialogTitle>
-        
-        <DialogContent sx={{ backgroundColor: '#F8E6D2', paddingTop: 2 }}>
-          <Typography 
-            variant="body2" 
-            sx={{ 
-              color: '#3E1D01', 
-              marginBottom: 2,
-              textAlign: 'center'
-            }}
-          >
-            Digite o IP do servidor ao qual deseja se conectar:
-          </Typography>
-          
-          <TextField
-            fullWidth
-            label="IP do Servidor"
-            placeholder="192.168.1.100 ou localhost"
-            value={targetIP}
-            onChange={(e) => setTargetIP(e.target.value)}
-            disabled={isConnecting}
-            sx={{
-              marginBottom: 2,
-              '& .MuiOutlinedInput-root': {
-                backgroundColor: 'white',
-              }
-            }}
-          />
 
-          {connectionError && (
-            <Alert 
-              severity="error" 
-              sx={{ marginBottom: 2 }}
-            >
-              {connectionError}
-            </Alert>
-          )}
-
-          <Typography 
-            variant="body2" 
-            sx={{ 
-              color: '#666', 
-              fontSize: '0.8rem',
-              textAlign: 'center'
-            }}
-          >
-          </Typography>
-        </DialogContent>
-        
-        <DialogActions 
-          sx={{ 
-            backgroundColor: '#F8E6D2',
-            justifyContent: 'space-between',
-            padding: 2
-          }}
-        >
-          <Button 
-            onClick={handleCloseModal}
-            disabled={isConnecting}
-            sx={{ color: '#3E1D01' }}
-          >
-            Cancelar
-          </Button>
-          
-          <Button 
-            onClick={handleConnectToIP}
-            disabled={isConnecting || !targetIP.trim()}
-            variant="contained"
-            sx={{
-              backgroundColor: '#3E1D01',
-              '&:hover': {
-                backgroundColor: '#2A1401',
-              },
-              '&:disabled': {
-                backgroundColor: '#cccccc',
-              }
-            }}
-          >
-            {isConnecting ? (
-              <>
-                <CircularProgress size={20} sx={{ marginRight: 1, color: 'white' }} />
-                Conectando...
-              </>
-            ) : (
-              'Conectar'
-            )}
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 };
