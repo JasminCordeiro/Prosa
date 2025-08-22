@@ -22,20 +22,17 @@ console.log(`Hostname: ${os.hostname()}`);
 console.log(`Sistema: ${os.type()} ${os.release()}\n`);
 
 console.log('PORTAS DO SERVIDOR:');
-console.log(`   • TCP (Terminal): ${localIP}:2004`);
-console.log(`   • HTTP/WebSocket: ${localIP}:3001\n`);
+console.log(`   • HTTP/WebSocket: ${localIP}:2004\n`);
 
 console.log('CONFIGURAÇÃO PARA CLIENTES:');
 console.log('   • Frontend (.env):');
-console.log(`     VITE_SERVER_URL=http://${localIP}:3001`);
-console.log('   • Cliente Terminal:');
-console.log(`     Digite: ${localIP}\n`);
+console.log(`     VITE_SERVER_URL=http://${localIP}:2004\n`);
 
 console.log('TESTE DE CONECTIVIDADE:');
-console.log(`   • API Status: http://${localIP}:3001/api/status`);
+console.log(`   • API Status: http://${localIP}:2004/api/status`);
 console.log(`   • Ping: ping ${localIP}\n`);
 
-console.log('FIREWALL: Certifique-se de que as portas 2004 e 3001 estão liberadas!');
+console.log('FIREWALL: Certifique-se de que a porta 2004 está liberada!');
 console.log('━'.repeat(60));
 
 // Iniciar o servidor principal

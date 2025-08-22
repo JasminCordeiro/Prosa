@@ -11,17 +11,17 @@ const NetworkConfig = {
     
     // Para desenvolvimento local (quando frontend e backend estão na mesma máquina)
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-      return 'http://localhost:3001';
+      return 'http://localhost:2004';
     }
     
     // Para rede local (quando frontend está em outra máquina)
-    // Usar o hostname atual mas porta 3001
-    return `http://${window.location.hostname}:3001`;
+    // Usar o hostname atual mas porta 2004
+    return `http://${window.location.hostname}:2004`;
   },
 
   // Configuração manual para casos específicos
   getCustomServerUrl(serverIp) {
-    return `http://${serverIp}:3001`;
+    return `http://${serverIp}:2004`;
   },
 
   // Configuração para cliente terminal

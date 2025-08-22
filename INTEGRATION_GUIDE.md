@@ -1,6 +1,6 @@
 # Guia de Integração Frontend-Backend - Proza
 
-## 🚀 Como Testar a Integração
+## Como Testar a Integração
 
 ### 1. Instalação das Dependências
 
@@ -20,18 +20,17 @@ npm install
 
 ```bash
 cd Prosa/Application
-npm run dev
+npm run dev network-server
 ```
 
 O backend irá iniciar:
-- **Servidor TCP**: Porta 2004 (para clientes terminal)
-- **Servidor HTTP/WebSocket**: Porta 3001 (para frontend)
+- **Servidor HTTP/WebSocket**: Porta 2004 (para frontend)
 
 ### 3. Executar o Frontend
 
 ```bash
 cd Prosa/ProzaFront
-npm run dev
+npm run dev -- --host 0.0.0.0
 ```
 
 O frontend irá iniciar na porta **5173** por padrão.
@@ -43,23 +42,20 @@ O frontend irá iniciar na porta **5173** por padrão.
 3. **Teste as funcionalidades**:
    - **Grupo Geral**: Todos entram automaticamente neste grupo
    - **Mensagens públicas**: Enviadas no grupo geral, todos veem
-   - **Conversas privadas**: Clique em um usuário na sidebar para iniciar
+   - **Conversas privadas**: Utilize `@nomedousuario ou @NomeDoCliente sua mensagem privada`
    - **Navegação**: Use o drawer esquerdo para alternar entre grupo e conversas
    - **Cache de usuários**: Usuários ficam salvos para reconexão rápida
    - **Reconexão**: Clique em usuários salvos na tela de login
-   - **Envio de arquivos**: Funciona tanto no grupo quanto em conversas privadas
    - **Lista de usuários**: Visualize todos os usuários online na sidebar direita
 
 ## 🔧 Funcionalidades Implementadas
 
 ### Backend
-- ✅ Servidor TCP original mantido (porta 2004)
-- ✅ Novo servidor HTTP/WebSocket (porta 3001)
+- ✅ Servidor HTTP/WebSocket (porta 2004)
 - ✅ CORS configurado
 - ✅ API REST para status e usuários
 - ✅ WebSocket para comunicação em tempo real
 - ✅ Suporte a mensagens privadas
-- ✅ Suporte ao envio de arquivos
 
 ### Frontend
 - ✅ Contexto React para gerenciar estado da conexão
@@ -74,7 +70,6 @@ O frontend irá iniciar na porta **5173** por padrão.
 - ✅ **Reconexão Automática**: Clique em usuários salvos para reconectar rapidamente
 - ✅ **Indicadores de Conexão**: Status visual dinâmico com cores e tooltips
 - ✅ **Status em Tempo Real**: WiFi, servidor e usuário com indicadores coloridos
-- ✅ Upload de arquivos
 - ✅ Scroll automático para novas mensagens
 
 ## 🎯 Como Testar Diferentes Cenários
@@ -87,7 +82,7 @@ O frontend irá iniciar na porta **5173** por padrão.
 ### Teste 2: Mensagens Privadas
 1. Com 2+ usuários conectados
 2. **Método 1**: Clique no nome de um usuário na sidebar direita
-3. **Método 2**: No grupo geral, digite: `@nomedousuario sua mensagem privada`
+3. **Método 2**: No grupo geral, digite: `@nomedousuario ou @NomeDoCliente sua mensagem privada`
 4. Verifique se a conversa aparece em uma aba separada
 5. Teste alternando entre grupo geral e conversa privada
 
@@ -97,11 +92,6 @@ O frontend irá iniciar na porta **5173** por padrão.
 3. **Conversas Privadas**: Clique em usuários na sidebar direita para iniciar
 4. **Visual**: Observe que a conversa atual fica destacada no drawer
 5. **Indicadores**: Verifique contadores de mensagens não lidas
-
-### Teste 4: Envio de Arquivos
-1. Clique no ícone 📎
-2. Selecione um arquivo
-3. Teste tanto no grupo geral quanto em conversas privadas
 
 ### Teste 5: Cache de Usuários
 1. **Faça login** com um usuário
@@ -129,7 +119,7 @@ O frontend irá iniciar na porta **5173** por padrão.
 ## 🐛 Troubleshooting
 
 ### Backend não inicia
-- Verifique se as portas 2004 e 3001 estão livres
+- Verifique se a porta 2004 está livre
 - Execute `npm install` no diretório Application
 
 ### Frontend não conecta
@@ -178,7 +168,7 @@ Backend TCP Server (Net)
 
 ### Indicadores de Conexão (Rodapé do Drawer)
 - **Layout**: Ícones lado a lado na parte superior, informações embaixo de cada ícone
-- **Servidor**: Ícone DNS + porta (localhost:3001)
+- **Servidor**: Ícone DNS + porta (localhost:2004)
 - **Status**: Ícone WiFi + status da conexão + ping em tempo real
 - **Usuário**: Ícone pessoa + nome do usuário + contador de usuários online
 - **Ping em Tempo Real**: Medição de latência a cada 3 segundos

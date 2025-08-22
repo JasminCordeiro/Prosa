@@ -40,7 +40,7 @@ ifconfig
 Você verá no terminal:
 ```
 [STATUS] Servidor TCP escutando na porta 2004 em 0.0.0.0
-[STATUS] Servidor HTTP/WebSocket escutando na porta 3001 em 0.0.0.0
+[STATUS] Servidor HTTP/WebSocket escutando na porta 2004 em 0.0.0.0
 [NETWORK] Servidor acessível na rede local através do IP desta máquina
 [NETWORK] Frontend acessível na rede local através do IP desta máquina
 ```
@@ -50,12 +50,12 @@ Você verá no terminal:
 #### Windows:
 1. Abra "Windows Defender Firewall"
 2. Clique em "Permitir um aplicativo pelo firewall"
-3. Adicione `node.exe` ou permita as portas 2004 e 3001
+3. Adicione `node.exe` ou permita a porta 2004
 
 #### Linux:
 ```bash
 sudo ufw allow 2004
-sudo ufw allow 3001
+sudo ufw allow 2004
 ```
 
 ---
@@ -73,12 +73,12 @@ npm install
 #### 2. Configurar IP do Servidor
 Crie o arquivo `.env` no diretório `ProzaFront`:
 ```env
-VITE_SERVER_URL=http://IP_DO_SERVIDOR:3001
+VITE_SERVER_URL=http://IP_DO_SERVIDOR:2004
 ```
 
 Exemplo:
 ```env
-VITE_SERVER_URL=http://192.168.1.100:3001
+VITE_SERVER_URL=http://192.168.1.100:2004
 ```
 
 #### 3. Iniciar o Frontend
@@ -127,7 +127,7 @@ O cliente perguntará o IP do servidor:
 
 **Frontend (.env):**
 ```env
-VITE_SERVER_URL=http://192.168.1.100:3001
+VITE_SERVER_URL=http://192.168.1.100:2004
 ```
 
 **Cliente Terminal:**
@@ -165,17 +165,15 @@ ping IP_DO_SERVIDOR
 ### 2. Teste de Porta (Windows)
 ```cmd
 telnet IP_DO_SERVIDOR 2004
-telnet IP_DO_SERVIDOR 3001
 ```
 
 ### 3. Teste de Porta (Linux/Mac)
 ```bash
 nc -zv IP_DO_SERVIDOR 2004
-nc -zv IP_DO_SERVIDOR 3001
 ```
 
 ### 4. Teste via Navegador
-Acesse: `http://IP_DO_SERVIDOR:3001/api/status`
+Acesse: `http://IP_DO_SERVIDOR:2004/api/status`
 
 Deve retornar:
 ```json
@@ -201,7 +199,7 @@ Deve retornar:
 **Soluções:**
 1. Verifique a variável VITE_SERVER_URL
 2. Confirme se o servidor permite CORS
-3. Tente acessar diretamente: `http://IP_DO_SERVIDOR:3001`
+3. Tente acessar diretamente: `http://IP_DO_SERVIDOR:2004`
 
 ### Problema: "Timeout" 
 **Soluções:**
@@ -248,7 +246,7 @@ npm run dev
 **Máquina B (Cliente Web)**
 ```bash
 # .env
-VITE_SERVER_URL=http://192.168.1.100:3001
+VITE_SERVER_URL=http://192.168.1.100:2004
 
 # Executar
 cd Prosa/ProzaFront
@@ -275,7 +273,7 @@ cd Prosa/Application && npm run dev
 
 ### Cliente Web:
 ```bash
-echo "VITE_SERVER_URL=http://IP_DO_SERVIDOR:3001" > Prosa/ProzaFront/.env
+echo "VITE_SERVER_URL=http://IP_DO_SERVIDOR:2004" > Prosa/ProzaFront/.env
 cd Prosa/ProzaFront && npm run dev
 ```
 

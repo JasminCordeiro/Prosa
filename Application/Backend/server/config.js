@@ -1,6 +1,5 @@
 module.exports = {
-  PORT: 2004,        // Porta TCP para clientes terminal
-  HTTP_PORT: 3001,   // Porta HTTP/WebSocket para frontend
+  HTTP_PORT: 2004,   // Porta HTTP/WebSocket para frontend
   HOST: '0.0.0.0',   // Escutar em todas as interfaces de rede
   LOG_DIR: './logs',
   MAX_CLIENTS: 50,

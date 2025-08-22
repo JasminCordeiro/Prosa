@@ -1,10 +1,10 @@
-# ☕ Prosa — Chat em Rede com Sockets TCP
+# ☕ Prosa — Chat em Rede com WebSocket
 
-**Prosa** é uma aplicação de chat ponto a ponto desenvolvida como parte do Trabalho Prático da disciplina **Redes de Computadores 1** (UFOP - 2025). A aplicação permite a troca de mensagens entre usuários conectados via **sockets TCP**, com gerenciamento centralizado de conexões.
+**Prosa** é uma aplicação de chat em tempo real desenvolvida como parte do Trabalho Prático da disciplina **Redes de Computadores 1** (UFOP - 2025). A aplicação permite a troca de mensagens entre usuários conectados via **WebSocket**, com gerenciamento centralizado de conexões.
 
 ## 📚 Objetivo
 
-O objetivo deste trabalho é aplicar conceitos de comunicação em rede usando **sockets TCP**, construindo um chat funcional onde os clientes se registram em um servidor central e se comunicam diretamente entre si.
+O objetivo deste trabalho é aplicar conceitos de comunicação em rede usando **WebSocket**, construindo um chat funcional onde os clientes se registram em um servidor central e se comunicam em tempo real.
 
 ---
 
@@ -12,7 +12,7 @@ O objetivo deste trabalho é aplicar conceitos de comunicação em rede usando *
 
 - **Frontend:** JavaScript, React.js
 - **Backend:** Node.js
-- **Comunicação:** Sockets TCP/IP
+- **Comunicação:** WebSocket
 - **Banco de dados:** Firebase
 - **Porta padrão do servidor:** `2004`
 

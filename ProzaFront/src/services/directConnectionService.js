@@ -14,7 +14,7 @@ class DirectConnectionService {
       return this.connections.get(serverIP);
     }
 
-    const serverUrl = `http://${serverIP}:3001`;
+    const serverUrl = `http://${serverIP}:2004`;
     
     console.log(`[DIRECT] Conectando ao servidor: ${serverUrl}`);
     

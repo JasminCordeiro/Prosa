@@ -248,18 +248,25 @@ class HttpServerManager {
                     
                     // Verificar se é um IP (formato xxx.xxx.xxx.xxx ou localhost)
                     console.log(`[IP VALIDATION] === VALIDAÇÃO DE IP ===`);
+                    console.log(`[IP VALIDATION] Target: '${target}'`);
                
                     // Regex mais flexível e detalhada
                     const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$|^localhost$|^127\.0\.0\.1$/;
                     
                     // Teste de regex detalhado
                     const isIP = ipRegex.test(target);
+                    console.log(`[IP VALIDATION] Regex test result: ${isIP}`);
+                    
+                    // Validação adicional para padrão IPv4 simples
+                    const isIPv4Pattern = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(target);
+                    console.log(`[IP VALIDATION] IPv4 pattern test result: ${isIPv4Pattern}`);
                     
                     // Se o padrão IPv4 bate mas a regex completa não, usar validação mais simples
                     const finalIsIP = isIP || isIPv4Pattern;
+                    console.log(`[IP VALIDATION] Final isIP result: ${finalIsIP}`);
                     
                     if (finalIsIP) {
-                        console.log(`[WEBSOCKET] Mensagem direcionada para IP: ${target}`)
+                        console.log(`[WEBSOCKET] ROTA IP SELECIONADA - Mensagem direcionada para IP: ${target}`)
                         console.log(`[WEBSOCKET] Validando se existe usuário vinculado ao IP '${target}'...`)
                         
                         // Normalizar IP de busca
@@ -378,7 +385,7 @@ class HttpServerManager {
                             senderId: client.id,
                             type: 'private',
                             timestamp: new Date().toISOString(),
-                            target: targetClient.namex, // SEMPRE usar o nome real do usuário
+                            target: targetClient.name, // SEMPRE usar o nome real do usuário
                             isIPMessage: true,
                             targetIP: client.ip, // IP do remetente
                             resolvedFromIP: target, // IP que foi usado para encontrar o usuário
@@ -401,7 +408,7 @@ class HttpServerManager {
                         
                     } else {
                         // Busca por nome de usuário (lógica original)
-                        console.log(`[WEBSOCKET] Iniciando busca de usuário: ${target}`)
+                        console.log(`[WEBSOCKET] ROTA USUÁRIO SELECIONADA - Iniciando busca de usuário: ${target}`)
                         console.log(`[WEBSOCKET] Procurando usuário '${target}' na lista de ${this.clients.size} clientes conectados...`)
                         
                         // Encontrar o usuário alvo
@@ -518,7 +525,7 @@ class HttpServerManager {
     }
 
     start() {
-        const httpPort = config.HTTP_PORT || 3001
+        const httpPort = config.HTTP_PORT || 2004
         
         this.server.listen(httpPort, config.HOST, () => {
             const localIP = getLocalIP();
