@@ -22,6 +22,8 @@ import WifiOffIcon from "@mui/icons-material/WifiOff";
 import SignalWifiStatusbar4BarIcon from "@mui/icons-material/SignalWifiStatusbar4Bar";
 import DeleteIcon from "@mui/icons-material/Delete";
 import LanguageIcon from "@mui/icons-material/Language";
+import VolumeUpIcon from "@mui/icons-material/VolumeUp";
+import VolumeOffIcon from "@mui/icons-material/VolumeOff";
 import { useSocket } from "../context/SocketContext";
 import { useNavigate } from "react-router-dom";
 import { Tooltip } from "@mui/material";
@@ -46,7 +48,9 @@ const DrawerComponent = () => {
     switchToPrivateChat,
     getPrivateChats,
     disconnect,
-    deletePrivateChat
+    deletePrivateChat,
+    soundEnabled,
+    toggleSound
   } = useSocket();
 
   const privateChats = getPrivateChats();
@@ -158,46 +162,93 @@ const DrawerComponent = () => {
             />
           </Box>
 
-          {/* Spacer para empurrar o botão de logout para baixo */}
-          <Box sx={{ flexGrow: 1 }} />
+                     {/* Spacer para empurrar os botões para baixo */}
+           <Box sx={{ flexGrow: 1 }} />
 
-          {/* Botão de logout fixado no rodapé */}
-          <Button
-              className="exit"
-              onClick={handleLogout}
-              sx={{
-                width: "100%",
-                height: "8%",
-                minWidth: 0,
-                minHeight: 0,
-                padding: 0,
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                marginBottom: 0,
-                "&:hover": {
-                  backgroundColor: "rgba(62, 29, 1, 0.1)",
-                },
-                "&:focus": {
-                  outline: "none",
-                },
-                "&:active": {
-                  outline: "none",
-                },
-                "&.Mui-focusVisible": {
-                  outline: "none",
-                },
-                
-              }}
-            >
-                             <LogoutIcon
-                 sx={{ 
-                   color: "#3E1D01", 
-                   fontSize: 29,
-                   transform: "scaleX(-1)"
-                 }}
-               />
-            </Button>
+           {/* Botão de controle de som */}
+           <Tooltip title={soundEnabled ? "Desativar som de notificação" : "Ativar som de notificação"} arrow>
+             <Button
+               className="sound-toggle"
+               onClick={toggleSound}
+               sx={{
+                 width: "100%",
+                 height: "8%",
+                 minWidth: 0,
+                 minHeight: 0,
+                 padding: 0,
+                 display: "flex",
+                 justifyContent: "center",
+                 alignItems: "center",
+                 marginBottom: 0,
+                 "&:hover": {
+                   backgroundColor: "rgba(62, 29, 1, 0.1)",
+                 },
+                 "&:focus": {
+                   outline: "none",
+                 },
+                 "&:active": {
+                   outline: "none",
+                 },
+                 "&.Mui-focusVisible": {
+                   outline: "none",
+                 },
+               }}
+             >
+               {soundEnabled ? (
+                 <VolumeUpIcon
+                   sx={{ 
+                     color: "#3E1D01", 
+                     fontSize: 25
+                   }}
+                 />
+               ) : (
+                 <VolumeOffIcon
+                   sx={{ 
+                     color: "#3E1D01", 
+                     fontSize: 25
+                   }}
+                 />
+               )}
+             </Button>
+           </Tooltip>
+
+           {/* Botão de logout fixado no rodapé */}
+           <Button
+               className="exit"
+               onClick={handleLogout}
+               sx={{
+                 width: "100%",
+                 height: "8%",
+                 minWidth: 0,
+                 minHeight: 0,
+                 padding: 0,
+                 display: "flex",
+                 justifyContent: "center",
+                 alignItems: "center",
+                 marginBottom: 0,
+                 "&:hover": {
+                   backgroundColor: "rgba(62, 29, 1, 0.1)",
+                 },
+                 "&:focus": {
+                   outline: "none",
+                 },
+                 "&:active": {
+                   outline: "none",
+                 },
+                 "&.Mui-focusVisible": {
+                   outline: "none",
+                 },
+                 
+               }}
+             >
+                              <LogoutIcon
+                  sx={{ 
+                    color: "#3E1D01", 
+                    fontSize: 29,
+                    transform: "scaleX(-1)"
+                  }}
+                />
+             </Button>
           
         </Box>
 

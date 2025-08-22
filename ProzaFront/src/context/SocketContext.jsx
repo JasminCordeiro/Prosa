@@ -24,6 +24,12 @@ export const SocketProvider = ({ children }) => {
   const [error, setError] = useState(null);
   const [cachedUsers, setCachedUsers] = useState([]); // Usuários em cache
   const [ping, setPing] = useState(null); // Latência da conexão
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    // Carregar preferência de som do localStorage
+    const saved = localStorage.getItem('prosa_sound_enabled');
+    return saved !== null ? JSON.parse(saved) : true;
+  }); // Controle de som
+  const [showNotification, setShowNotification] = useState(false); // Notificação visual
 
   // Carregar usuários do cache quando o componente monta
   useEffect(() => {
@@ -166,6 +172,71 @@ export const SocketProvider = ({ children }) => {
     setCachedUsers([]);
   }, []);
 
+  // Função para tocar som de notificação
+  const playNotificationSound = useCallback(() => {
+    if (!soundEnabled) return;
+    
+    try {
+      // Criar um contexto de áudio
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      
+      // Criar um oscilador para gerar o som
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      // Conectar os nós
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      // Configurar o som - tom agradável de notificação
+      oscillator.frequency.setValueAtTime(800, audioContext.currentTime); // Frequência base
+      oscillator.frequency.setValueAtTime(1000, audioContext.currentTime + 0.1); // Frequência alta
+      oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.2); // Volta à base
+      
+      oscillator.type = 'sine'; // Tipo de onda suave
+      
+      // Configurar volume com fade in/out
+      gainNode.gain.setValueAtTime(0, audioContext.currentTime); // Começa em 0
+      gainNode.gain.linearRampToValueAtTime(0.2, audioContext.currentTime + 0.05); // Fade in
+      gainNode.gain.linearRampToValueAtTime(0.2, audioContext.currentTime + 0.25); // Mantém
+      gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.3); // Fade out
+      
+      // Tocar o som
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.3);
+      
+      console.log('🔔 Som de notificação tocado');
+    } catch (error) {
+      console.error('Erro ao tocar som de notificação:', error);
+    }
+  }, [soundEnabled]);
+
+  // Função para alternar som
+  const toggleSound = useCallback(() => {
+    setSoundEnabled(prev => {
+      const newValue = !prev;
+      // Salvar preferência no localStorage
+      localStorage.setItem('prosa_sound_enabled', JSON.stringify(newValue));
+      return newValue;
+    });
+  }, []);
+
+  // Função para mostrar notificação visual
+  const showVisualNotification = useCallback((message) => {
+    // Verificar se o navegador suporta notificações
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('Nova mensagem no Prosa', {
+        body: `${message.sender}: ${message.message || 'Arquivo enviado'}`,
+        icon: '/logoatt.svg',
+        tag: 'prosa-notification'
+      });
+    }
+    
+    // Mostrar notificação visual interna
+    setShowNotification(true);
+    setTimeout(() => setShowNotification(false), 3000);
+  }, []);
+
   const connectWithCachedUser = useCallback(async (cachedUser) => {
     try {
       setLoading(true);
@@ -261,6 +332,11 @@ export const SocketProvider = ({ children }) => {
       // Iniciar medição de ping
       socketService.startPingMeasurement();
       
+      // Solicitar permissão para notificações
+      if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+      }
+      
       console.log('Estado atualizado - usuário:', userName, 'ID:', data.clientId);
     };
 
@@ -273,6 +349,13 @@ export const SocketProvider = ({ children }) => {
     // Callback para nova mensagem (grupo geral)
     const onNewMessage = (message) => {
       console.log('Nova mensagem recebida para grupo geral:', message);
+      
+      // Tocar som de notificação se não for a própria mensagem
+      if (message.sender !== user?.name) {
+        playNotificationSound();
+        showVisualNotification(message);
+      }
+      
       setGroupMessages(prev => {
         const newMessages = [...prev, {
           ...message,
@@ -289,6 +372,12 @@ export const SocketProvider = ({ children }) => {
       const conversationKey = message.sender;
       
       console.log(`[CONVERSATION] Mensagem recebida de: ${message.sender}`);
+      
+      // Tocar som de notificação se não for a própria mensagem
+      if (message.sender !== user?.name) {
+        playNotificationSound();
+        showVisualNotification(message);
+      }
       
       setPrivateConversations(prev => ({
         ...prev,
@@ -472,7 +561,13 @@ export const SocketProvider = ({ children }) => {
     refreshUserList,
     
     // Gerenciamento de conversas
-    deletePrivateChat
+    deletePrivateChat,
+    
+    // Controle de som
+    soundEnabled,
+    toggleSound,
+    playNotificationSound,
+    showNotification
   };
 
   return (
