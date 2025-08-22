@@ -190,9 +190,13 @@ const DrawerComponent = () => {
                 
               }}
             >
-              <LogoutIcon
-                sx={{ color: "#3E1D01", fontSize: 29 }}
-              />
+                             <LogoutIcon
+                 sx={{ 
+                   color: "#3E1D01", 
+                   fontSize: 29,
+                   transform: "scaleX(-1)"
+                 }}
+               />
             </Button>
           
         </Box>
