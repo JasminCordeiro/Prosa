@@ -79,7 +79,7 @@ const DrawerComponent = () => {
       return {
         status: 'connecting',
         text: 'Conectando...',
-        color: '#ff9800', // laranja
+        color: '#987C5B', // marrom base (média)
         icon: WifiOutlinedIcon
       };
     }
@@ -88,7 +88,7 @@ const DrawerComponent = () => {
       return {
         status: 'connected',
         text: `Conectado como ${user.name} • ${users.length} usuários online`,
-        color: '#4caf50', // verde
+        color: '#5C4321', // marrom escuro (alta)
         icon: SignalWifiStatusbar4BarIcon
       };
     }
@@ -97,7 +97,7 @@ const DrawerComponent = () => {
       return {
         status: 'connected_no_user',
         text: 'Conectado ao servidor • Registrando usuário...',
-        color: '#ff9800', // laranja
+        color: '#987C5B', // marrom base (média)
         icon: WifiOutlinedIcon
       };
     }
@@ -105,7 +105,7 @@ const DrawerComponent = () => {
     return {
       status: 'disconnected',
       text: 'Desconectado do servidor',
-      color: '#f44336', // vermelho
+      color: '#D9C7AF', // marrom muito claro (baixa)
       icon: WifiOffIcon
     };
   };
@@ -523,7 +523,7 @@ const DrawerComponent = () => {
               <Box sx={{ display: "flex", justifyContent: "center", minWidth: "20px" }}>
                 <DnsOutlinedIcon 
                   sx={{ 
-                    color: connected ? "#4caf50" : "#3E1D01", 
+                    color: connected ? "#5C4321" : "#3E1D01", 
                     fontSize: 20,
                     transition: "color 0.3s ease",
                   }} 
@@ -553,7 +553,7 @@ const DrawerComponent = () => {
               <Box sx={{ display: "flex", justifyContent: "center", minWidth: "20px" }}>
                 <PersonOutlinedIcon 
                   sx={{ 
-                    color: user ? "#4caf50" : "#3E1D01", 
+                    color: user ? "#5C4321" : "#3E1D01", 
                     fontSize: 20,
                     transition: "color 0.3s ease",
                   }} 
@@ -584,7 +584,7 @@ const DrawerComponent = () => {
               >
                 <Typography
                   sx={{
-                    color: connected ? "#4caf50" : "#f44336",
+                    color: connected ? "#5C4321" : "#D9C7AF",
                     fontSize: "8px",
                     fontWeight: "bold",
                     textAlign: "center",
@@ -630,7 +630,7 @@ const DrawerComponent = () => {
                 {connected && ping !== null && (
                   <Typography
                     sx={{
-                      color: ping < 100 ? "#4caf50" : ping < 200 ? "#ff9800" : "#f44336",
+                      color: ping < 100 ? "#987C5B" : ping < 200 ? "#987C5B" : "#D9C7AF",
                       fontSize: "8px",
                       fontWeight: "bold",
                       textAlign: "center",
@@ -654,7 +654,7 @@ const DrawerComponent = () => {
               >
                 <Typography
                   sx={{
-                    color: user ? "#4caf50" : "#3E1D01",
+                    color: user ? "#5C4321" : "#3E1D01",
                     fontSize: "8px",
                     fontWeight: "bold",
                     textAlign: "center",

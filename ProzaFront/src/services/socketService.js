@@ -19,7 +19,17 @@ class SocketService {
     }
 
     // Usar configuração automática se nenhuma URL for fornecida
-    const targetUrl = serverUrl || NetworkConfig.getServerUrl();
+    let targetUrl = serverUrl || NetworkConfig.getServerUrl();
+    
+    // Validar a URL se foi fornecida manualmente
+    if (serverUrl) {
+      try {
+        NetworkConfig.validateServerUrl(serverUrl);
+      } catch (error) {
+        console.error('[NETWORK] URL de servidor inválida:', error.message);
+        return Promise.reject(new Error(error.message));
+      }
+    }
     
     console.log(`[NETWORK] Conectando ao servidor: ${targetUrl}`);
     console.log(`[NETWORK] Hostname atual: ${window.location.hostname}`);
@@ -40,7 +50,12 @@ class SocketService {
 
       this.socket.on('connect_error', (error) => {
         console.error('Erro de conexão:', error);
-        reject(error);
+        // Verificar se é erro de porta incorreta
+        if (error.message && (error.message.includes('ECONNREFUSED') || error.message.includes('connect_error'))) {
+          reject(new Error('Não foi possível conectar ao servidor. Verifique se o servidor está rodando na porta 2004.'));
+        } else {
+          reject(error);
+        }
       });
     });
   }

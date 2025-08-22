@@ -5,11 +5,13 @@ import logo from "../assets/logotipo-proza.svg";
 import { useSocket } from "../context/SocketContext";
 import { AccountCircle, Delete, History } from "@mui/icons-material";
 import userCacheService from "../services/userCacheService";
+import NetworkConfig from "../config/network";
 
 const LoginForm = () => {
   const [usuario, setUsuario] = useState("");
-  const [servidor, setServidor] = useState("localhost:2004");
+  const [servidor, setServidor] = useState("2004");
   const [showCachedUsers, setShowCachedUsers] = useState(false);
+  const [serverError, setServerError] = useState(null);
   const navigate = useNavigate();
   const { 
     register, 
@@ -39,6 +41,14 @@ const LoginForm = () => {
     }
 
     try {
+      // Validar a porta antes de tentar conectar
+      try {
+        NetworkConfig.validateAndFormatServerInput(servidor);
+      } catch (validationError) {
+        setError(validationError.message);
+        return;
+      }
+
       await register(usuario.trim());
     } catch (err) {
       console.error('Erro no login:', err);
@@ -61,6 +71,21 @@ const LoginForm = () => {
   const handleClearCache = () => {
     clearUserCache();
     setShowCachedUsers(false);
+  };
+
+  const handleServerChange = (e) => {
+    const newServer = e.target.value;
+    setServidor(newServer);
+    setServerError(null);
+    
+    // Validar em tempo real se o campo não estiver vazio
+    if (newServer.trim()) {
+      try {
+        NetworkConfig.validateAndFormatServerInput(newServer);
+      } catch (validationError) {
+        setServerError(validationError.message);
+      }
+    }
   };
 
   return (
@@ -178,6 +203,12 @@ const LoginForm = () => {
             {error && (
               <Alert severity="error" sx={{ width: "80%", marginBottom: "20px" }}>
                 {error}
+              </Alert>
+            )}
+
+            {serverError && (
+              <Alert severity="warning" sx={{ width: "80%", marginBottom: "20px" }}>
+                {serverError}
               </Alert>
             )}
 
@@ -301,11 +332,13 @@ const LoginForm = () => {
             />
 
             <TextField
-              placeholder="Servidor"
+              placeholder="Servidor (ex: localhost:2004)"
               variant="outlined"
               value={servidor}
-              onChange={(e) => setServidor(e.target.value)}
+              onChange={handleServerChange}
               disabled={loading}
+              error={!!serverError}
+              helperText={serverError}
               sx={{
                 fontFamily: "Caladea",
                 borderRadius: 2,
@@ -321,6 +354,11 @@ const LoginForm = () => {
                     color: "#3E1D01",
                   },
                 },
+                "& .MuiFormHelperText-root": {
+                  fontFamily: "Caladea",
+                  fontSize: "12px",
+                  color: serverError ? "#d32f2f" : "rgba(94, 62, 26, 0.7)",
+                },
               }}
             />
 
@@ -328,7 +366,7 @@ const LoginForm = () => {
               type="submit"
               variant="contained"
               className="loginBotao"
-              disabled={loading || !usuario.trim()}
+              disabled={loading || !usuario.trim() || !!serverError}
               sx={{
                 fontFamily: "Caladea",
                 backgroundColor: "#F8E6D2",
